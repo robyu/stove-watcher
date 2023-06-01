@@ -3,4 +3,8 @@
 *~
 data/renamed
 data/resized
+readjpg/build
+readjpg/build*
+readjpg/CMakeFiles
+readjpg/cmake_install.cmake
 
