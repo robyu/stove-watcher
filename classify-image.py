@@ -50,9 +50,7 @@ def main(argv):
             # imread returns images in BGR format, so we need to convert to RGB
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            # get_features_from_image also takes a crop direction arguments in case you don't have square images
-            features, cropped = runner.get_features_from_image(img,
-                                                               crop_direction_x=)
+            features, cropped = runner.get_features_from_image(img)
 
             res = runner.classify(features)
 

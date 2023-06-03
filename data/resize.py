@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -34,7 +35,10 @@ def resize_files(in_dir, out_dir):
 
     for file_path in in_path.glob("*.jpg"):
         out_fname = out_path / file_path.name
-        cmd_list = ['convert', file_path, '-resize', '1000x>', out_fname]
+        cmd_list = ['convert', file_path,
+                    '-resize', 'x660>',   # "x": compute width automatically, "660>" = max height 660
+                    "-crop", "660x660+170+0", # crop to 660x660, offset is (170, 0)
+                    out_fname]
         print(f"resize {file_path} -> {out_fname}")
         subprocess.run(cmd_list)
 
@@ -43,8 +47,12 @@ def resize_files(in_dir, out_dir):
 
 if __name__ == '__main__':
     args = parse_args()
-    in_dir = args.in_dir
-    out_dir = args.out_dir
+    in_dir = Path(args.in_dir)
+    out_dir = Path(args.out_dir)
+
+    if out_dir.is_dir()==False:
+        out_dir.mkdir()
+    #
 
     resize_files(in_dir, out_dir)
 
