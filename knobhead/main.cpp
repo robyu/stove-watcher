@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
     int width;
     int height;
-    rgb_array = readJPG("../debug.jpg", width, height);
+    rgb_array = readJPG(argv[1], width, height);
     assert (width * height == EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE);
 
 #if 0
