@@ -1,4 +1,6 @@
 # Tool macros
+
+
 CC ?= gcc
 CXX ?= g++
 
@@ -7,10 +9,11 @@ NAME = app
 BUILD_PATH = ./build
 
 # Location of main.cpp (must use C++ compiler for main)
-CXXSOURCES = main.cpp
+CXXSOURCES = main.cpp read_jpg.cpp
 
 # Search path for header files (current directory)
 CFLAGS += -I.
+CFLAGS += -I /usr/include/opencv4
 
 # C and C++ Compiler flags
 CFLAGS += -Wall						# Include all warnings
@@ -26,6 +29,8 @@ CXXFLAGS += -std=c++14				# Use C++14 standard
 # Linker flags
 LDFLAGS += -lm 						# Link to math.h
 LDFLAGS += -lstdc++					# Link to stdc++.h
+LDFLAGS += -L/usr/lib/x86_64-linux-gnu/libopencv_core.so
+LDFLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_imgcodecs
 
 # Include C source code for required libraries
 CSOURCES += $(wildcard edge-impulse-sdk/CMSIS/DSP/Source/TransformFunctions/*.c) \

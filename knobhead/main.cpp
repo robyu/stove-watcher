@@ -1,14 +1,16 @@
 #include <stdio.h>
 
 #include "edge-impulse-sdk/classifier/ei_run_classifier.h"
+#include "read_jpg.h"
+
 
 // Callback function declaration
-static int get_signal_data(size_t offset, size_t length, float *out_ptr);
+// static int get_signal_data(size_t offset, size_t length, float *out_ptr);
+static int get_signal_data_uint32_to_float(size_t offset, size_t length, float *out_ptr);
 
 // Raw features copied from test sample (Edge Impulse > Model testing)
-static float input_buf[] = {
-    /* Paste your raw features here! */ 
-};
+static std::vector<std::uint32_t> rgb_array;
+
 
 int main(int argc, char **argv) {
     
@@ -16,6 +18,12 @@ int main(int argc, char **argv) {
     ei_impulse_result_t result; // Used to store inference output
     EI_IMPULSE_ERROR res;       // Return code from inference
 
+    int width;
+    int height;
+    rgb_array = readJPG("./test.jpg", width, height);
+    assert (width * height == EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE);
+
+#if 0
     // Calculate the length of the buffer
     size_t buf_len = sizeof(input_buf) / sizeof(input_buf[0]);
 
@@ -27,10 +35,11 @@ int main(int argc, char **argv) {
                 (int)buf_len);
         return 1;
     }
+#endif    
 
     // Assign callback function to fill buffer used for preprocessing/inference
     signal.total_length = EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE;
-    signal.get_data = &get_signal_data;
+    signal.get_data = &get_signal_data_uint32_to_float;
 
     // Perform DSP pre-processing and inference
     res = run_classifier(&signal, &result, false);
@@ -76,10 +85,20 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+#if 0
 // Callback: fill a section of the out_ptr buffer when requested
 static int get_signal_data(size_t offset, size_t length, float *out_ptr) {
     for (size_t i = 0; i < length; i++) {
-        out_ptr[i] = (input_buf + offset)[i];
+        out_ptr[i] = (rgb_array + offset)[i];
+    }
+
+    return EIDSP_OK;
+}
+#endif
+
+static int get_signal_data_uint32_to_float(size_t offset, size_t length, float *out_ptr) {
+    for (size_t i = 0; i < length; i++) {
+        out_ptr[i] = static_cast<float>(rgb_array[i + offset]);
     }
 
     return EIDSP_OK;
