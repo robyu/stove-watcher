@@ -7,32 +7,29 @@ import os
 import sys, getopt
 import numpy as np
 from edge_impulse_linux.image import ImageImpulseRunner
+import json
+import argparse
 
-runner = None
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Argument Parser')
 
-def help():
-    print('python classify-image.py <path_to_model.eim> <path_to_image.jpg>')
+    parser.add_argument('modelfile', type=str, help='Model filename')
+    parser.add_argument('input_jpg', type=str, help='Input JPEG filename')
+    parser.add_argument('-o', '--output_jpg', type=str, default='output.jpg', help='Output JPEG filename')
+    parser.add_argument('-b', '--boxes_json', type=str, default='output.json', help='Boxes JSON filename')
 
-def main(argv):
-    try:
-        opts, args = getopt.getopt(argv, "h", ["--help"])
-    except getopt.GetoptError:
-        help()
-        sys.exit(2)
+    args = parser.parse_args()
 
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            help()
-            sys.exit()
+    # Check if mandatory arguments are provided
+    if not args.input_jpg or not args.modelfile:
+        parser.error('input_jpg and modelfile are mandatory arguments')
 
-    if len(args) != 2:
-        help()
-        sys.exit(2)
+    return args
 
-    model = args[0]
+def classify(input_jpg, modelfile, output_jpg, boxes_json):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    modelfile = os.path.join(dir_path, model)
+    modelfile = os.path.join(dir_path, modelfile)
 
     print('MODEL: ' + modelfile)
 
@@ -42,9 +39,9 @@ def main(argv):
             print('Loaded runner for "' + model_info['project']['owner'] + ' / ' + model_info['project']['name'] + '"')
             labels = model_info['model_parameters']['labels']
 
-            img = cv2.imread(args[1])
+            img = cv2.imread(input_jpg)
             if img is None:
-                print('Failed to load image', args[1])
+                print(f"Failed to load image {input_jpg}")
                 exit(1)
 
             # imread returns images in BGR format, so we need to convert to RGB
@@ -66,14 +63,24 @@ def main(argv):
                 for bb in res["result"]["bounding_boxes"]:
                     print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
                     cropped = cv2.rectangle(cropped, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
-
+                with open(boxes_json, "w") as f:
+                    json.dump(res["result"]["bounding_boxes"], f)
+                    print(f"wrote bounding boxes to {boxes_json}")
+                #
             # the image will be resized and cropped, save a copy of the picture here
             # so you can see what's being passed into the classifier
-            cv2.imwrite('debug.jpg', cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(output_jpg, cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR))
+            print(f"wrote classifier input image to {output_jpg}")
 
         finally:
             if (runner):
                 runner.stop()
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    args = parse_arguments()
+    classify(args.input_jpg,
+             args.modelfile,
+             args.output_jpg,
+             args.boxes_json)
+    
+    
