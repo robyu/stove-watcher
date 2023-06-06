@@ -11,6 +11,10 @@ readjpg/cmake_install.cmake
 *.o
 
 knobhead/build
+marked.jpg
+out.jpg
+output.jpg
+output.json
 
 
 
