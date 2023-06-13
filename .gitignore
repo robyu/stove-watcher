@@ -1,9 +1,8 @@
 .DS_Store
 *#
 *~
-data/renamed
-data/resized
-data/out_resized
+data/out-renamed
+data/out-resized
 readjpg/build
 readjpg/build*
 readjpg/CMakeFiles
@@ -15,6 +14,10 @@ marked.jpg
 out.jpg
 output.jpg
 output.json
+
+data-from-ei/.ipynb_checkpoints
+*.npy
+*.json
 
 
 

@@ -36,8 +36,8 @@ def resize_files(in_dir, out_dir):
     for file_path in in_path.glob("*.jpg"):
         out_fname = out_path / file_path.name
         cmd_list = ['convert', file_path,
-                    '-resize', 'x660>',   # "x": compute width automatically, "660>" = max height 660
-                    "-crop", "660x660+170+0", # crop to 660x660, offset is (170, 0)
+                    '-resize', 'x640>',   # "x": compute width automatically, "660>" = max height 660
+                    "-crop", "640x640+170+0", # crop to 660x660, offset is (170, 0)
                     out_fname]
         print(f"resize {file_path} -> {out_fname}")
         subprocess.run(cmd_list)
