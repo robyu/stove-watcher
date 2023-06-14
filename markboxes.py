@@ -31,7 +31,7 @@ def mark_boxes(in_image_fname,
     with open(box_fname, "r") as f:
         boxes_l = json.load(f)
         
-    scalex = 1.2
+    scalex = 1.0
     scaley = 1.0
     xoffset=0
     yoffset=0
