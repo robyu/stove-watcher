@@ -1,0 +1,3 @@
+/home/ryu/p2023/stove-watcher/readjpg/CMakeFiles/rebuild_cache.dir
+/home/ryu/p2023/stove-watcher/readjpg/CMakeFiles/edit_cache.dir
+/home/ryu/p2023/stove-watcher/readjpg/CMakeFiles/read_jpg.dir

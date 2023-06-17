@@ -1,0 +1,3 @@
+/mnt/hgfs/Documents/p2023/stove-watcher/readjpg/build/CMakeFiles/rebuild_cache.dir
+/mnt/hgfs/Documents/p2023/stove-watcher/readjpg/build/CMakeFiles/edit_cache.dir
+/mnt/hgfs/Documents/p2023/stove-watcher/readjpg/build/CMakeFiles/read_jpg.dir
