@@ -3,6 +3,7 @@
 *~
 data/out-renamed
 data/out-resized
+data/out-extract
 readjpg/build
 readjpg/build*
 readjpg/CMakeFiles
