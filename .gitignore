@@ -14,7 +14,7 @@ marked.jpg
 out.jpg
 output.jpg
 output.json
-
+*/__pycache__/
 data-from-ei/.ipynb_checkpoints
 *.npy
 *.json
