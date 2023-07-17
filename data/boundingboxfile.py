@@ -9,11 +9,15 @@ import pickle
 
 class BBoxFile:
     def __init__(self, image_path):
-        assert isinstance(image_path, Path)
-        bb_path = image_path.parent
+        if image_path.is_dir():
+            bb_path = image_path
+        else:
+            bb_path = image_path.parent
+        #
         assert bb_path.is_dir()
 
         self.pickle_path = bb_path / "rects.pickle"
+        print(f"pickle path is {self.pickle_path}")
 
         #     the pickle contains a dictionary of the form:
         #     {

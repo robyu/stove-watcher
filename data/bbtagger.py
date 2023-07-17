@@ -37,6 +37,7 @@ class Tagger:
         self.end_x = 0
         self.end_y = 0
         self.curr_rect = None
+        self.retval = 0
 
         #
         # load rects pickle file and extract or initialize
@@ -158,7 +159,14 @@ class Tagger:
             # write bounding box JSON and quit
 
             # self.write_bb_json()
-            sys.exit(0)
+            #sys.exit(0)
+            if event.char=='q':
+                self.retval = 0 # normal exit
+            else:
+                self.retval = 1  # exit loop
+            #
+            self.root.destroy() # destroy tk window and stop main loop
+            
         elif event.char.lower() == 'd':
             # delete most recent rect
             self.delete_last_rect()
@@ -197,10 +205,16 @@ class Tagger:
         self.curr_rect = None
 
     #
+    # def destroy(self):
+    #     self.canvas.delete(self.image_tk)
+        
+
+    # def __del__(self):
+    #     self.destroy()
 
 def find_jpg_files(image_dir):
-    assert image_dir
-    jpg_files = list(image_path.glob('**/*.jpg'))
+    assert image_dir.is_dir()
+    jpg_files = list(image_dir.glob('**/*.jpg'))
     return jpg_files
 
     
@@ -208,25 +222,57 @@ def tag_one_image(image_fname):
     assert image_fname.exists()
     tagger = Tagger(image_fname)
     tagger.display()
+    print(tagger.retval)
+    return tagger.retval
+    
 
 def tag_all_images(image_dir):
-    pass
+    assert image_dir.is_dir()
+    #
+    # load each image in the directory
+    
+    files_l = find_jpg_files(image_dir.parent)
+    for p in files_l:
+        retval = tag_one_image(p)
+        if retval:
+            break  # user indicated to exit the entire loop
+    #
+    
 
 def tag_next_untagged(image_dir):
-    # load bounding box file & extract list of tagged images
-    # create list of image files
-    # correlate and find an untagged file
-    # tag that file
-    pass
+    assert image_dir.is_dir()
+    bboxfile = boundingboxfile.BBoxFile(image_dir)
+    files_l = find_jpg_files(image_dir.parent)
+
+    for file_path in files_l:
+        fname = file_path.name
+        if fname in bboxfile.d and len(bboxfile.d[fname]) <= 0:
+            print(fname)
+            break
+        #
+    #
+    target_path = image_dir / fname
+    print(target_path)
+    assert target_path.exists()
+    tag_one_image(target_path)
+    
 
 def audit_tags(image_dir):
+    assert image_dir.is_dir()
+    bboxfile = boundingboxfile.BBoxFile(image_dir)
+    files_l = find_jpg_files(image_dir)
+
+    for n, file_path in enumerate(files_l):
+        fname = file_path.name
+        num_bboxes = 0
+        is_tagged = False
+        if fname in bboxfile.d:
+            num_bboxes = len(bboxfile.d[fname])
+            is_tagged = True
+        #
+        print(f"""\
+|{n:3}| {fname:30s} | {str(is_tagged):5s} | {num_bboxes:2d} |""")
     #
-    # load bouding box file
-    # create list of image files
-    # for each image file:
-    #   print number of bboxes
-    #   print whether it's in the bb file 
-    pass
     
     
 
