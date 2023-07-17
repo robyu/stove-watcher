@@ -109,9 +109,31 @@ class BBoxFile:
             pickle.dump(self.d, f)
         
 
+    def make_json_fname(self):
+        out_fname = self.pickle_path.parent / "bounding_boxes.labels"
+        return out_fname
+        
     def write_json(self):
-        out_fname = self.make_out_fname()
-        d = self.convert_rects_to_dict(self)
+        json_d = {"version": 1,
+                  "type": "bounding-box-labels"}
+        bbox_per_file_l = []
+        for f in self.d.keys():
+            bbox_l = self.d[f]
+            if len(bbox_l) <= 0:
+                # no bounding boxes for this file, so skip to next
+                continue
+            else:
+                json_bbox_l = [{"label":"knob",
+                               "x": bbox[0],
+                               "y": bbox[1],
+                               "width": bbox[2],
+                               "height": bbox[3]} for bbox in bbox_l]
+                file_bbox_d = {f"{f}": json_bbox_l}
+                bbox_per_file_l.append(file_bbox_d)
+            #
+        #
+        json_d['boundingBoxes'] = bbox_per_file_l
+        out_fname = self.make_json_fname()
         with open(out_fname, "w") as f:
-            json.dump(d, f)
+            json.dump(json_d, f)
         #

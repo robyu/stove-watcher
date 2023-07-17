@@ -11,7 +11,7 @@ import boundingboxfile
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    valid_cmds = ['tag','tagall','tagnext','convert','audit']
+    valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", default='', type=Path)
     return parser.parse_args()
@@ -274,7 +274,10 @@ def audit_tags(image_dir):
 |{n:3}| {fname:30s} | {str(is_tagged):5s} | {num_bboxes:2d} |""")
     #
     
-    
+def bbox_file_to_json(image_dir):
+    assert image_dir.is_dir()
+    bboxfile = boundingboxfile.BBoxFile(image_dir)
+    bboxfile.write_json()
 
 if __name__=="__main__":
     args = parse_args()
@@ -297,6 +300,8 @@ if __name__=="__main__":
         tag_next_untagged(args.image_path)
     elif args.cmd=="audit":
         audit_tags(args.image_path)
+    elif args.cmd=="writejson":
+        bbox_file_to_json(args.image_path)
     else:
         print(f"Unrecognized command: {args.cmd}")
         sys.exit(0)
