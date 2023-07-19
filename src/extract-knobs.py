@@ -15,9 +15,12 @@ import helplib
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract Knobs')
 
-    parser.add_argument('bb_json', type=str, help='JSON file with bounding boxes (output of find-knobs.py)')
-    parser.add_argument('out_dir', type=str, help='Output directory')
-    parser.add_argument('-t', '--value_thresh', type=float, default=0.95, help='bounding box minimum value')
+    default_thresh = 0.95
+    
+    parser.add_argument('bb_json', type=Path, help='JSON file with bounding boxes (output of find-knobs.py)')
+    parser.add_argument('out_dir', type=Path, help='Output directory')
+    parser.add_argument('orig_dir', type=Path, help='directory containing original image')
+    parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
 
     args = parser.parse_args()
 
@@ -26,17 +29,18 @@ def parse_arguments():
 def read_bb_json(bb_json_path):
     with open(bb_json_path, "r") as f:
         d = json.load(f)
+
     #
-    print(f"input image: {d['img_fname']}")
-    print(f"contains {len(d['bb'])} bounding boxes")
+    print(f"input image: {d['image_fname']}")
+    print(f"contains {len(d['bounding_boxes'])} bounding boxes")
 
     return d
 
-def read_orig_image(cropped_img_fname, orig_dir):
-    orig_img_path = Path("out-renamed") / Path(cropped_img_fname).name
-    assert orig_img_path.exists(), f"does not exist: {orig_img_path}"
-    img_rgb = helplib.read_image_rgb(orig_img_path)
-    return img_rgb
+# def read_orig_image(cropped_img_fname, orig_dir):
+#     orig_img_path = Path("out-renamed") / Path(cropped_img_fname).name
+#     assert orig_img_path.exists(), f"does not exist: {orig_img_path}"
+#     img_rgb = helplib.read_image_rgb(orig_img_path)
+#     return img_rgb
     
 def compute_crop_params(orig_width, orig_height, cropped_width, cropped_height):
     assert cropped_width==cropped_height
@@ -74,33 +78,55 @@ def adjust_bounding_boxes(bb_l, scalef, h_offset):
                  'value': bb['value']} for bb in bb_l]
     return adj_bb_l
         
-    
 
-if __name__ == "__main__":
-    args = parse_arguments()
-
-    out_path = Path(args.out_dir)
-    out_path.mkdir(exist_ok=True)
-
-    bb_json_path = Path(args.bb_json)
-    assert bb_json_path.exists(), f"file does not exist: {bb_json_path}"
+def extract_single_image(bb_json_path,
+                         orig_path):
 
     # keys: img_fname, img_width, img_height, bb (a list)
     bb_d = read_bb_json(bb_json_path)
 
-    orig_img_rgb = read_orig_image(bb_d['img_fname'], orig_dir="out-renamed/")
+    orig_img_path = orig_path / Path(bb_d['image_fname']).name  # path of original (uncropped, un-resized) image
+    assert orig_img_path.exists()
+    orig_img_rgb = helplib.read_image_rgb(orig_img_path)
 
     scalef, h_offset = compute_crop_params(orig_img_rgb.shape[1],
                                            orig_img_rgb.shape[0],
-                                           bb_d['img_width'],
-                                           bb_d['img_height'])
+                                           bb_d['image_width'],
+                                           bb_d['image_height'])
 
-    adjusted_bb_l = adjust_bounding_boxes(bb_d['bb'], scalef, h_offset)
+    adjusted_bb_l = adjust_bounding_boxes(bb_d['bounding_boxes'], # list of bounding boxes
+                                          scalef, h_offset)
 
     marked_img = mark_boxes(orig_img_rgb, adjusted_bb_l, args.value_thresh)
-    marked_fname = out_path / Path(bb_d['img_fname']).name
-    print(f"marked image: {marked_fname}")
-    cv2.imwrite(str(marked_fname), marked_img)
+    marked_img_path = args.out_dir / Path(bb_d['image_fname']).name
+    cv2.imwrite(str(marked_img_path), marked_img)
+    print(f"wrote marked image: {marked_img_path}")
+
+def extract_all_images(bb_json_path,
+                       orig_path):
+    assert bb_json_path.is_dir()
+    for bb_fname in bb_json_path.glob("*.json"):
+        extract_single_image(bb_fname,
+                             orig_path)
+    #
+
+    
+if __name__ == "__main__":
+    args = parse_arguments()
+
+    #out_path = Path(args.out_dir)
+    args.out_dir.mkdir(exist_ok=True)
+
+    if args.bb_json.is_file():
+        extract_single_image(args.bb_json,
+                             args.orig_dir)
+    elif args.bb_json.is_dir():
+        extract_all_images(args.bb_json,
+                           args.orig_dir)
+    else:
+        print(f"{args.bb_json} is neither a file nor a directory")
+        sys.exit(1)
+    #
     
 
 

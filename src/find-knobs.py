@@ -36,20 +36,26 @@ def make_box_json_fname(boxes_path, input_jpg):
     out_fname = boxes_path / Path(input_jpg.stem).with_suffix(".json")
     return out_fname
 
-def classify_image(input_jpg, boxes_json, modelfile):
+def classify_image(input_jpg, boxes_path, modelfile):
     assert input_jpg.exists()
     
     kid = knobid.KnobId(modelfile)
     img_rgb = helplib.read_image_rgb(input_jpg)
     bb_l, img_out = kid.locate_knobs(img_rgb)  # bb_l = list of bounding boxes
-    
-    # for bb in bb_l:
-    #     print(f"val: {bb['value']:5.3} x: {bb['x']} y:{bb['y']} w:{bb['width']} h:{bb['height']}")
+    d = {'image_fname': str(input_jpg),
+         'image_height': img_rgb.shape[0], # rows
+         'image_width': img_rgb.shape[1],  # cols
+         'modelfile': modelfile,
+         'bounding_boxes': bb_l
+         }
+
+    # generate output filename
+    bbox_out_fname = make_box_json_fname(boxes_path, input_jpg)
+         
+    with open(bbox_out_fname, "w") as f:
+        json.dump(d, f)
     #
-    with open(boxes_json, "w") as f:
-        json.dump(bb_l, f)
-    #
-    print(f"{input_jpg} -> {len(bb_l)} ->  {boxes_json}")
+    print(f"{input_jpg} -> {len(bb_l)} knobs ->  {bbox_out_fname}")
 
 def classify_dir_images(input_path, boxes_path, modelfile):
     assert input_path.is_dir() 
@@ -57,8 +63,7 @@ def classify_dir_images(input_path, boxes_path, modelfile):
     pat = r"(?:jpg|JPG|jpeg|JPEG)$"   # ? = non capturing group
     for fname in input_path.glob("*"):
         if re.search(pat, str(fname)):
-            box_fname =make_box_json_fname(boxes_path, fname)
-            classify_image(fname, box_fname, modelfile)
+            classify_image(fname, boxes_path, modelfile)
         #
     #
 
