@@ -5,8 +5,25 @@ from functools import partial
 import json
 import pickle
 
+class ImageBBoxes:
+    def __init__(self, image_path, width, height):
+        assert isinstance(image_path, Path)
+        self.image_path = image_path
+        self.image_width = width
+        self.image_height = height
+        self.bb_l = []   # tuple (x0, y0, x1, y1)
 
+    def add_bbox(self, bbox):
+        assert len(bbox)==4
+        assert bbox[0] >= 0
+        assert bbox[1] >= 0
+        assert bbox[0] + bbox[2] < self.image_width
+        assert bbox[1] + bbox[3] < self.image_height
+        self.bb_l.append(bbox)
 
+    def get_num_bboxes(self):
+        return len(self.bb_l)
+        
 class BBoxFile:
     def __init__(self, image_path):
         if image_path.is_dir():
@@ -19,29 +36,21 @@ class BBoxFile:
         self.pickle_path = bb_path / "rects.pickle"
         print(f"pickle path is {self.pickle_path}")
 
-        #     the pickle contains a dictionary of the form:
-        #     {
-        #         "file_a.jpg" : [{
-        #             "x0" : x0,
-        #             "y0" : y0,
-        #             "x1" : x1,
-        #             "y1" : y1},
-        #             ... (more rects)
-        #             ],
-        #        "file_b.jpg": [
-        #             {rect},
-        #             {rect}, ...
-        #             ]
-        #     }
-        self.d = {}
+        # images_d is associative array: {image filename: image stats & list of bounding boxes}
+        self.images_d = {}
 
         try:
             with open(self.pickle_path, "rb") as f:
-                self.d = pickle.load(f)
+                self.images_d = pickle.load(f)
         except FileNotFoundError:
             print(f"could not load {self.pickle_path}")
         #
 
+    def __getitem__(self, key):
+        return self.images_d[key]
+
+    def __setitem__(self, key, value):
+        self.images_d[key] = value
 
     def _bboxes_to_rects(self, canvas, bbox_l):
         rect_l = []
@@ -60,10 +69,10 @@ class BBoxFile:
         given Tk canvas & image_name, convert 
         the image's bounding boxes to rects and add to the canvas
         """
-        if image_name in self.d:
+        if image_name in self.images_d.keys():
             #
             # copy pickle entry to a list
-            bbox_l = self.d[image_name]
+            bbox_l = self.images_d[image_name].bbox_l
         else:
             print(f"{self.pickle_path} does not contain a preexisting entry for {image_name}")
             bbox_l = []
@@ -101,25 +110,25 @@ class BBoxFile:
             box_coords = self._rect_to_bbox(rect_coords)
             bbox_l.append(box_coords)
         #
-        self.d[image_fname] = bbox_l
+        self.images_d[image_fname] = bbox_l
         return bbox_l
 
     def save(self):
         with open(self.pickle_path, "wb") as f:
-            pickle.dump(self.d, f)
+            pickle.dump(self.images_d, f)
         
 
     def make_json_fname(self):
         out_fname = self.pickle_path.parent / "bounding_boxes.labels"
         return out_fname
         
-    def write_json(self):
+    def write_ei_json(self):
         json_d = {"version": 1,
                   "type": "bounding-box-labels"}
         bbox_per_file_l = []
-        for f in self.d.keys():
-            bbox_l = self.d[f]
-            if len(bbox_l) <= 0:
+        for image_fname in self.image_d.keys():
+            imagebbox = self.image_d[image_fname]
+            if len(imagebbox.bb_l) <= 0:
                 # no bounding boxes for this file, so skip to next
                 continue
             else:
@@ -127,8 +136,8 @@ class BBoxFile:
                                "x": bbox[0],
                                "y": bbox[1],
                                "width": bbox[2],
-                               "height": bbox[3]} for bbox in bbox_l]
-                file_bbox_d = {f"{f}": json_bbox_l}
+                               "height": bbox[3]} for bbox in imagebbox.bb_l]
+                file_bbox_d = {f"{image_fname}": json_bbox_l}
                 bbox_per_file_l.append(file_bbox_d)
             #
         #

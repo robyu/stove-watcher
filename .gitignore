@@ -19,6 +19,7 @@ output.json
 data-from-ei/.ipynb_checkpoints
 *.npy
 *.json
+tests/data/*.pickle
 
 
 
