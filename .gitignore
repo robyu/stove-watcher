@@ -15,11 +15,12 @@ marked.jpg
 out.jpg
 output.jpg
 output.json
-*/__pycache__/
+*/__pycache__
 data-from-ei/.ipynb_checkpoints
 *.npy
 *.json
 tests/data/*.pickle
+
 
 
 

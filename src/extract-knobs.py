@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 sys.path.append("../src")
 import helplib
+import boundingboxfile
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract Knobs')
@@ -179,10 +180,13 @@ def extract_from_all_images_pickle(bb_pickle_path,
                                    extra_width=0,
                                    extra_height=0):
     assert bb_pickle_path.is_file()
+    bbox_file = boundingboxfile.BBoxFile(bb_pickle_path)
 
-    for bb_fname in bb_json_path.glob("*.json"):
+    #for bb_fname in bb_json_path.glob("*.json"):
+    for bb_fname in bbox_file.d.keys():
         try:
-            extract_from_single_image(bb_fname,
+            bb_d = bbox_file.d[bb_fname]
+            extract_from_single_image(bb_d,
                                       orig_path,
                                       out_path,
                                       value_thresh,

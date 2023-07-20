@@ -11,7 +11,7 @@ class ImageBBoxes:
         self.image_path = image_path
         self.image_width = width
         self.image_height = height
-        self.bb_l = []   # tuple (x0, y0, x1, y1)
+        self.bbox_l = []   # tuple (x0, y0, x1, y1)
 
     def add_bbox(self, bbox):
         assert len(bbox)==4
@@ -19,12 +19,43 @@ class ImageBBoxes:
         assert bbox[1] >= 0
         assert bbox[0] + bbox[2] < self.image_width
         assert bbox[1] + bbox[3] < self.image_height
-        self.bb_l.append(bbox)
+        self.bbox_l.append(bbox)
 
     def get_num_bboxes(self):
-        return len(self.bb_l)
-        
-class BBoxFile:
+        return len(self.bbox_l)
+
+    def __iter__(self):
+        """
+        this will let me use ImageBBoxes as an iterator
+        to iterate through bboxes
+        """
+        return iter(self.bbox_l)
+
+def bboxes_to_canvas_rects(ibb, canvas):
+    """
+    given an IBB and a canvas,
+    add all bounding boxes to canvas rects
+    """
+    for bbox in ibb.bbox_l:
+        rect = canvas.create_rectangle(bbox[0],
+                                       bbox[1],
+                                       bbox[0] + bbox[2],
+                                       bbox[1] + bbox[3],
+                                       outline='green')
+        rect_l.append(rect)
+    #
+    return rect_l
+
+def canvas_rects_to_bboxes(canvas, ibb):
+    rect_l = canvas.find_withtag("rectangle")
+    for rect in rect_l:
+        rect_coords = canvas.bbox(rect)  # get tuple coord
+        assert len(rect_coords)==4
+        box_coords = self._rect_to_bbox(rect_coords)
+        ibb.append(box_coords)
+    #
+
+class BBoxFile:  # a collection of ImageBBoxes
     def __init__(self, image_path):
         if image_path.is_dir():
             bb_path = image_path
@@ -52,33 +83,22 @@ class BBoxFile:
     def __setitem__(self, key, value):
         self.images_d[key] = value
 
-    def _bboxes_to_rects(self, canvas, bbox_l):
-        rect_l = []
-        for bbox in bbox_l:
-            rect = canvas.create_rectangle(bbox[0],
-                                           bbox[1],
-                                           bbox[0] + bbox[2],
-                                           bbox[1] + bbox[3],
-                                           outline='green')
-            rect_l.append(rect)
-        #
-        return rect_l
 
-    def to_rects(self, canvas, image_name):
-        """
-        given Tk canvas & image_name, convert 
-        the image's bounding boxes to rects and add to the canvas
-        """
-        if image_name in self.images_d.keys():
-            #
-            # copy pickle entry to a list
-            bbox_l = self.images_d[image_name].bbox_l
-        else:
-            print(f"{self.pickle_path} does not contain a preexisting entry for {image_name}")
-            bbox_l = []
-        #
-        rect_l = self._bboxes_to_rects(canvas, bbox_l)
-        return rect_l
+    # def to_rects(self, canvas, image_name):
+    #     """
+    #     given Tk canvas & image_name, convert 
+    #     the image's bounding boxes to rects and add to the canvas
+    #     """
+    #     if image_name in self.images_d.keys():
+    #         #
+    #         # copy pickle entry to a list
+    #         bbox_l = self.images_d[image_name].bbox_l
+    #     else:
+    #         print(f"{self.pickle_path} does not contain a preexisting entry for {image_name}")
+    #         bbox_l = []
+    #     #
+    #     rect_l = self._bboxes_to_rects(canvas, bbox_l)
+    #     return rect_l
 
     def _rect_to_bbox(self, rect_coords):
         """
@@ -95,30 +115,30 @@ class BBoxFile:
         bbox = (x, y, w, h)
         return bbox
 
-    def update_bboxes(self, image_fname, canvas, rect_l):
-        """
-        given the image_fname and a list of Tk rects,
-        convert each rect to a bbox and update the dictionary's
-        image entry
-        """
-        #
-        # convert list of canvas rects to list of bounding box tuples
-        bbox_l = []
-        for rect in rect_l:
-            rect_coords = canvas.bbox(rect)  # get tuple coord
-            assert len(rect_coords)==4
-            box_coords = self._rect_to_bbox(rect_coords)
-            bbox_l.append(box_coords)
-        #
-        self.images_d[image_fname] = bbox_l
-        return bbox_l
+    # def update_bboxes(self, image_fname, canvas, rect_l):
+    #     """
+    #     given the image_fname and a list of Tk rects,
+    #     convert each rect to a bbox and update the dictionary's
+    #     image entry
+    #     """
+    #     #
+    #     # convert list of canvas rects to list of bounding box tuples
+    #     bbox_l = []
+    #     for rect in rect_l:
+    #         rect_coords = canvas.bbox(rect)  # get tuple coord
+    #         assert len(rect_coords)==4
+    #         box_coords = self._rect_to_bbox(rect_coords)
+    #         bbox_l.append(box_coords)
+    #     #
+    #     self.images_d[image_fname] = bbox_l
+    #     return bbox_l
 
     def save(self):
         with open(self.pickle_path, "wb") as f:
             pickle.dump(self.images_d, f)
         
 
-    def make_json_fname(self):
+    def _make_json_fname(self):
         out_fname = self.pickle_path.parent / "bounding_boxes.labels"
         return out_fname
         
@@ -142,7 +162,7 @@ class BBoxFile:
             #
         #
         json_d['boundingBoxes'] = bbox_per_file_l
-        out_fname = self.make_json_fname()
+        out_fname = self._make_json_fname()
         with open(out_fname, "w") as f:
             json.dump(json_d, f)
         #

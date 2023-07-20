@@ -43,57 +43,6 @@ class Tagger:
         # load rects pickle file and extract or initialize
         # the list of rectangles for this file
         self.bbox_file = boundingboxfile.BBoxFile(self.image_path)
-
-
-    # def load_bbox_pickle(self):
-    #     try:
-    #         with open(self.pickle_path, "rb") as f:
-    #             d = pickle.load(f)
-    #     except FileNotFoundError:
-    #         print(f"could not load {self.pickle_path}")
-    #         d = {}
-    #     #
-
-    #     return d
-
-    # def all_files_dict_to_rects(self, all_files_d, image_name):
-    #     """
-
-    #     look up "file.jpg" in the pickle dict and convert to rect list
-    #     """
-    #     if image_name in all_files_d:
-    #         #
-    #         # copy pickle entry to a list
-    #         bbox_l = all_files_d[image_name]
-    #     else:
-    #         print(f"{self.pickle_path} does not contain a preexisting entry for {image_name}")
-    #         bbox_l = []
-    #     #
-    #     rect_l = self.convert_bboxes_to_rects(self.canvas, bbox_l)
-    #     return rect_l
-
-    # def convert_bboxes_to_rects(self, canvas, bbox_l):
-    #     rect_l = []
-    #     for bbox in bbox_l:
-    #         rect = canvas.create_rectangle(bbox[0],
-    #                                        bbox[1],
-    #                                        bbox[0] + bbox[2],
-    #                                        bbox[1] + bbox[3],
-    #                                        outline='green')
-    #         rect_l.append(rect)
-    #     #
-    #     return rect_l
-    
-
-    # def convert_rects_to_bboxes(self, rect_l):
-    #     #
-    #     # convert list of canvas rects to list of bounding box tuples
-    #     bbox_l = []
-    #     for rect in rect_l:
-    #         bbox_l.append(self.convert_rect_to_bbox(rect))
-    #     #
-    #     return bbox_l
-            
     
     def display(self):
         # Display the image
@@ -113,35 +62,6 @@ class Tagger:
         self.root.bind("<ButtonRelease-1>", self.handle_mouseup)
         self.root.mainloop()
 
-    # def make_out_fname(self):
-    #     assert isinstance(self.image_path, Path)
-    #     out_fname = self.image_path.parent / Path(self.image_path.stem).with_extension('.json')
-    #     return out_fname
-
-    # def convert_rect_to_bbox(self, rect):
-    #     """
-    #     convert a convas rect to a bounding box tuple
-    #     """
-    #     bbox = self.canvas.bbox(rect)  # get tuple coord
-    #     x = bbox[0]
-    #     y = bbox[1]
-    #     w = bbox[2] - x
-    #     assert w > 0
-    #     h = bbox[3] - y
-    #     assert h > 0
-    #     print(f"{bbox}")
-
-    #     bbox = [x, y, w, h]
-    #     return bbox
-
-        
-    # def write_bbox_json(self):
-    #     out_fname = self.make_out_fname()
-    #     d = self.convert_rects_to_dict(self)
-    #     with open(out_fname, "w") as f:
-    #         json.dump(d, f)
-    #     #
-        
     def handle_keypress(self, event):
         print(f"got keypress {event.char.lower()}")
         if event.char.lower() == 'q':
@@ -246,7 +166,7 @@ def tag_next_untagged(image_dir):
 
     for file_path in files_l:
         fname = file_path.name
-        if fname in bboxfile.d and len(bboxfile.d[fname]) <= 0:
+        if fname in bboxfile.images_d and len(bboxfile.images_d[fname].bb_l) <= 0:
             print(fname)
             break
         #
@@ -266,8 +186,8 @@ def audit_tags(image_dir):
         fname = file_path.name
         num_bboxes = 0
         is_tagged = False
-        if fname in bboxfile.d:
-            num_bboxes = len(bboxfile.d[fname])
+        if fname in bboxfile.images_d:
+            num_bboxes = len(bboxfile.images_d[fname].bb_l)
             is_tagged = True
         #
         print(f"""\
