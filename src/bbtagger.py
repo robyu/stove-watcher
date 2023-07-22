@@ -7,6 +7,7 @@ import json
 import pickle
 import argparse
 import boundingboxfile
+import os
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -14,6 +15,7 @@ def parse_args():
     valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", default='', type=Path)
+    parser.add_argument("-i", "--ignore", action="store_true", default=False, help="ignore existing rect.pickle")
     return parser.parse_args()
 
 class Tagger:
@@ -43,6 +45,19 @@ class Tagger:
         # load rects pickle file and extract or initialize
         # the list of rectangles for this file
         self.bbox_file = boundingboxfile.BBoxFile(self.image_path)
+
+        if self.image_path in self.bbox_file:
+            self.img_bboxes = self.bbox_file[self.image_path]
+        else:
+            # create new img_bbox obj and add to the collection
+            self.img_bboxes = boundingboxfile.ImageBBoxes(self.image_path,
+                                                          image.width, # cols : width
+                                                          image.height  # rows : height
+                                                          )
+            self.bbox_file[self.image_path] = self.img_bboxes
+        #
+
+        self.rect_l = []   # a list of canvas rects
     
     def display(self):
         # Display the image
@@ -52,8 +67,7 @@ class Tagger:
         # gotta add the rects to the canvas after it's been displayed
         # otherwise they don't show up
         #self.rect_l = self.all_files_dict_to_rects(self.all_files_d, self.image_path.name)
-        self.rect_l = self.bbox_file.to_rects(self.canvas, self.image_path.name)
-
+        self.rect_l = boundingboxfile.bboxes_to_canvas_rects(self.img_bboxes, self.canvas)
         
         callback = partial(self.handle_keypress, self)
         self.root.bind("<KeyPress>", self.handle_keypress)  # amazingly, "self" is correctly passed to the callback
@@ -67,7 +81,8 @@ class Tagger:
         if event.char.lower() == 'q':
             #
             # copy canvas rect list back into all_files_d
-            self.bbox_file.update_bboxes(self.image_path.name, self.canvas, self.rect_l)
+            boundingboxfile.canvas_rects_to_bboxes(self.canvas, self.rect_l, self.img_bboxes)
+            self.bbox_file[self.image_path] = self.img_bboxes
             #self.all_files_d[self.image_path.name] = self.convert_rects_to_bboxes(self.rect_l)
 
             self.bbox_file.save()
@@ -132,10 +147,11 @@ class Tagger:
     # def __del__(self):
     #     self.destroy()
 
-def find_jpg_files(image_dir):
+def find_img_files(image_dir):
     assert image_dir.is_dir()
-    jpg_files = list(image_dir.glob('**/*.jpg'))
-    return jpg_files
+    jpg_files = list(image_dir.glob('*.jpg'))
+    png_files = list(image_dir.glob('*.png'))
+    return jpg_files + png_files
 
     
 def tag_one_image(image_fname):
@@ -151,7 +167,7 @@ def tag_all_images(image_dir):
     #
     # load each image in the directory
     
-    files_l = find_jpg_files(image_dir.parent)
+    files_l = find_img_files(image_dir)
     for p in files_l:
         retval = tag_one_image(p)
         if retval:
@@ -162,7 +178,8 @@ def tag_all_images(image_dir):
 def tag_next_untagged(image_dir):
     assert image_dir.is_dir()
     bboxfile = boundingboxfile.BBoxFile(image_dir)
-    files_l = find_jpg_files(image_dir.parent)
+    files_l = find_img_files(image_dir)
+    assert len(files_l) > 0
 
     for file_path in files_l:
         fname = file_path.name
@@ -180,18 +197,17 @@ def tag_next_untagged(image_dir):
 def audit_tags(image_dir):
     assert image_dir.is_dir()
     bboxfile = boundingboxfile.BBoxFile(image_dir)
-    files_l = find_jpg_files(image_dir)
+    files_l = find_img_files(image_dir)
 
     for n, file_path in enumerate(files_l):
-        fname = file_path.name
         num_bboxes = 0
         is_tagged = False
-        if fname in bboxfile.images_d:
-            num_bboxes = len(bboxfile.images_d[fname].bb_l)
+        if file_path in bboxfile:
+            num_bboxes = (bboxfile[file_path]).get_num_bboxes()
             is_tagged = True
         #
         print(f"""\
-|{n:3}| {fname:30s} | {str(is_tagged):5s} | {num_bboxes:2d} |""")
+|{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):5s} | {num_bboxes:2d} |""")
     #
     
 def bbox_file_to_json(image_dir):
@@ -202,12 +218,17 @@ def bbox_file_to_json(image_dir):
 if __name__=="__main__":
     args = parse_args()
     assert isinstance(args.image_path, Path)
+
+    if args.ignore==True:
+        pickle_path = boundingboxfile.make_pickle_path(args.image_path)
+        if pickle_path.is_file():
+            os.remove(pickle_path)
     #
     if args.cmd=="tag":
         #
         # tag a single image
         if Path(args.image_path).exists()==False:
-            args.image_path = Path('out-resized/apple-2023-05-14-19-18-2.jpg')
+            args.image_path = Path('../data/out-resized/apple-2023-05-14-19-18-2.jpg')
         #
         tag_one_image(args.image_path)
     elif args.cmd=="tagall":

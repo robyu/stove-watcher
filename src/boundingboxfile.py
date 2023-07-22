@@ -31,12 +31,18 @@ class ImageBBoxes:
         """
         return iter(self.bbox_l)
 
+    def append(self, bbox):
+        assert len(bbox)==4
+        self.bbox_l.append(bbox)
+
 def bboxes_to_canvas_rects(ibb, canvas):
     """
     given an IBB and a canvas,
     add all bounding boxes to canvas rects
     """
-    for bbox in ibb.bbox_l:
+    rect_l = []
+    for n, bbox in enumerate(ibb.bbox_l):
+        print(f"box {n}: {bbox}")
         rect = canvas.create_rectangle(bbox[0],
                                        bbox[1],
                                        bbox[0] + bbox[2],
@@ -46,25 +52,46 @@ def bboxes_to_canvas_rects(ibb, canvas):
     #
     return rect_l
 
-def canvas_rects_to_bboxes(canvas, ibb):
-    rect_l = canvas.find_withtag("rectangle")
+def canvas_rect_to_bbox(rect_coords):
+    """
+    convert a canvas rect to a bounding box tuple
+    """
+    x = rect_coords[0]
+    y = rect_coords[1]
+    w = rect_coords[2] - x
+    assert w > 0
+    h = rect_coords[3] - y
+    assert h > 0
+    print(f"{rect_coords}")
+
+    bbox = (x, y, w, h)
+    return bbox
+
+def canvas_rects_to_bboxes(canvas, rect_l, ibb):
+    # clear the ibb list of bboxes and re-add each rect
+    ibb.bbox_l = []
     for rect in rect_l:
         rect_coords = canvas.bbox(rect)  # get tuple coord
         assert len(rect_coords)==4
-        box_coords = self._rect_to_bbox(rect_coords)
-        ibb.append(box_coords)
+        bbox_coords = canvas_rect_to_bbox(rect_coords)
+        ibb.append(bbox_coords)
     #
 
+def make_pickle_path(image_path):
+    if image_path.is_dir():
+        bb_path = image_path
+    else:
+        bb_path = image_path.parent
+    #
+    assert bb_path.is_dir()
+
+    pickle_path = bb_path / "rects.pickle"
+    return pickle_path
+    
+    
 class BBoxFile:  # a collection of ImageBBoxes
     def __init__(self, image_path):
-        if image_path.is_dir():
-            bb_path = image_path
-        else:
-            bb_path = image_path.parent
-        #
-        assert bb_path.is_dir()
-
-        self.pickle_path = bb_path / "rects.pickle"
+        self.pickle_path = make_pickle_path(image_path)
         print(f"pickle path is {self.pickle_path}")
 
         # images_d is associative array: {image filename: image stats & list of bounding boxes}
@@ -78,11 +105,19 @@ class BBoxFile:  # a collection of ImageBBoxes
         #
 
     def __getitem__(self, key):
+        if isinstance(key, str)==False:
+            key = str(key)
         return self.images_d[key]
 
     def __setitem__(self, key, value):
+        if isinstance(key, str)==False:
+            key = str(key)
         self.images_d[key] = value
 
+    def __contains__(self, key):
+        if isinstance(key, str)==False:
+            key = str(key)
+        return key in self.images_d
 
     # def to_rects(self, canvas, image_name):
     #     """
@@ -100,20 +135,20 @@ class BBoxFile:  # a collection of ImageBBoxes
     #     rect_l = self._bboxes_to_rects(canvas, bbox_l)
     #     return rect_l
 
-    def _rect_to_bbox(self, rect_coords):
-        """
-        convert a convas rect to a bounding box tuple
-        """
-        x = rect_coords[0]
-        y = rect_coords[1]
-        w = rect_coords[2] - x
-        assert w > 0
-        h = rect_coords[3] - y
-        assert h > 0
-        print(f"{rect_coords}")
+    # def _rect_to_bbox(self, rect_coords):
+    #     """
+    #     convert a convas rect to a bounding box tuple
+    #     """
+    #     x = rect_coords[0]
+    #     y = rect_coords[1]
+    #     w = rect_coords[2] - x
+    #     assert w > 0
+    #     h = rect_coords[3] - y
+    #     assert h > 0
+    #     print(f"{rect_coords}")
 
-        bbox = (x, y, w, h)
-        return bbox
+    #     bbox = (x, y, w, h)
+    #     return bbox
 
     # def update_bboxes(self, image_fname, canvas, rect_l):
     #     """
