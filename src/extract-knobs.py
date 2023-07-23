@@ -20,7 +20,7 @@ def parse_arguments():
     
     parser.add_argument('-b', '--bbjson', type=Path, default=None, help='JSON file with bounding boxes (output of find-knobs.py)')
     parser.add_argument('-p', '--bbpickle', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
-    parser.add_argument('out_dir', type=Path, help='Output directory')
+    parser.add_argument('-o','--out_dir', type=Path, help='Output directory')
     parser.add_argument('orig_dir', type=Path, help='directory containing original image')
     parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
     parser.add_argument('-x', '--extrawidth', type=int, default=30, help='extra bounding box width, in pixels')
@@ -38,8 +38,9 @@ def read_bb_json(bb_json_path):
     #
     print(f"input image: {d['image_fname']}")
     print(f"contains {len(d['bounding_boxes'])} bounding boxes")
+    ibb = boundingboxfile.dict_to_bboxes(d)
 
-    return d
+    return ibb
 
 # def read_orig_image(cropped_img_fname, orig_dir):
 #     orig_img_path = Path("out-renamed") / Path(cropped_img_fname).name
@@ -111,7 +112,7 @@ def adjust_bounding_boxes(bb_l, scalef, h_offset, extra_width, extra_height):
     return adj_bb_l
         
 
-def extract_from_single_image(bb_d, # bbox dict
+def extract_from_single_image(ibb, # imageBBox object
                               orig_path,
                               out_path,
                               value_thresh,
@@ -120,9 +121,9 @@ def extract_from_single_image(bb_d, # bbox dict
                               ):
 
     # compose filenames of input image and output images
-    orig_img_path = orig_path / Path(bb_d['image_fname']).name  # path of original (uncropped, un-resized) image
+    orig_img_path = orig_path / ibb.image_path.name  # path of original (uncropped, un-resized) image
     assert orig_img_path.exists()
-    out_img_path_stem = out_path / Path(bb_d['image_fname']).stem
+    out_img_path_stem = out_path / ibb.image_path.stem
 
     # load original image
     orig_img_rgb = helplib.read_image_rgb(orig_img_path)
@@ -130,11 +131,11 @@ def extract_from_single_image(bb_d, # bbox dict
     # recompute crop parameters to fit orig image
     scalef, h_offset = compute_crop_params(orig_img_rgb.shape[1],
                                            orig_img_rgb.shape[0],
-                                           bb_d['image_width'],
-                                           bb_d['image_height'])
+                                           ibb.image_width,
+                                           ibb.image_height)
 
     # derive new bounding box coords
-    adjusted_bb_l = adjust_bounding_boxes(bb_d['bounding_boxes'], # list of bounding boxes
+    adjusted_bb_l = adjust_bounding_boxes(ibb.bbox_l, # list of bounding boxes
                                           scalef,
                                           h_offset,
                                           extra_width,
@@ -159,9 +160,9 @@ def extract_from_all_images_json(bb_json_path,
     for bb_fname in bb_json_path.glob("*.json"):
         try:
             # keys: img_fname, img_width, img_height, bb (a list)
-            bb_d = read_bb_json(bb_fname)
+            ibb = read_bb_json(bb_fname)
             
-            extract_from_single_image(bb_d,
+            extract_from_single_image(ibb,
                                       orig_path,
                                       out_path,
                                       value_thresh,
@@ -216,11 +217,11 @@ if __name__ == "__main__":
                                       extra_height=args.extraheight)
         elif args.bbjson.is_dir():
             extract_from_all_images_json(args.bbjson,
-                                    args.orig_dir,
-                                    args.out_dir,
-                                    args.value_thresh,
-                                    extra_width=args.extrawidth,
-                                    extra_height=args.extraheight)
+                                         args.orig_dir,
+                                         args.out_dir,
+                                         args.value_thresh,
+                                         extra_width=args.extrawidth,
+                                         extra_height=args.extraheight)
         else:
             print(f"{args.bbjson} is neither a file nor a directory")
             sys.exit(1)

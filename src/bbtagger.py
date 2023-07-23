@@ -15,7 +15,7 @@ def parse_args():
     valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", default='', type=Path)
-    parser.add_argument("-i", "--ignore", action="store_true", default=False, help="ignore existing rect.pickle")
+    parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     return parser.parse_args()
 
 class Tagger:
@@ -67,7 +67,7 @@ class Tagger:
         # gotta add the rects to the canvas after it's been displayed
         # otherwise they don't show up
         #self.rect_l = self.all_files_dict_to_rects(self.all_files_d, self.image_path.name)
-        self.rect_l = boundingboxfile.bboxes_to_canvas_rects(self.img_bboxes, self.canvas)
+        self.rect_l = self.img_bboxes.bboxes_to_canvas_rects(self.canvas)
         
         callback = partial(self.handle_keypress, self)
         self.root.bind("<KeyPress>", self.handle_keypress)  # amazingly, "self" is correctly passed to the callback
@@ -81,7 +81,7 @@ class Tagger:
         if event.char.lower() == 'q':
             #
             # copy canvas rect list back into all_files_d
-            boundingboxfile.canvas_rects_to_bboxes(self.canvas, self.rect_l, self.img_bboxes)
+            self.img_bboxes.canvas_rects_to_bboxes(self.canvas, self.rect_l)
             self.bbox_file[self.image_path] = self.img_bboxes
             #self.all_files_d[self.image_path.name] = self.convert_rects_to_bboxes(self.rect_l)
 
@@ -219,7 +219,7 @@ if __name__=="__main__":
     args = parse_args()
     assert isinstance(args.image_path, Path)
 
-    if args.ignore==True:
+    if args.delete==True:
         pickle_path = boundingboxfile.make_pickle_path(args.image_path)
         if pickle_path.is_file():
             os.remove(pickle_path)

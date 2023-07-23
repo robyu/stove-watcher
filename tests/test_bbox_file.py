@@ -41,6 +41,14 @@ class TestBBoxFile(unittest.TestCase):
         self.assertTrue(bbf[str(image_path)].get_num_bboxes() == 2)
     #
 
+    def test_bbox_to_dict(self):
+        bbox = boundingboxfile.BBox(0, 5, 10, 20, 0.5, 'knob')
+        print(bbox)
+        d = bbox.to_dict()
+        self.assertTrue(d['x'] == 0)
+        self.assertTrue(d['y'] == 5)
+        
+
 if __name__== "__main__":
     unittest.main()
     

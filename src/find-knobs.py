@@ -11,6 +11,7 @@ import argparse
 import helplib
 from pathlib import Path
 import re
+import boundingboxfile
 
 """
 standalone interface to knobid.py
@@ -42,12 +43,10 @@ def classify_image(input_jpg, boxes_path, modelfile):
     kid = knobid.KnobId(modelfile)
     img_rgb = helplib.read_image_rgb(input_jpg)
     bb_l, img_out = kid.locate_knobs(img_rgb)  # bb_l = list of bounding boxes
-    d = {'image_fname': str(input_jpg),
-         'image_height': img_rgb.shape[0], # rows
-         'image_width': img_rgb.shape[1],  # cols
-         'modelfile': modelfile,
-         'bounding_boxes': bb_l
-         }
+    d = boundingboxfile.make_id_dict(input_jpg,
+                                     img_rgb.shape[0],
+                                     img_rgb.shape[1],
+                                     bb_l)
 
     # generate output filename
     bbox_out_fname = make_box_json_fname(boxes_path, input_jpg)
@@ -60,7 +59,7 @@ def classify_image(input_jpg, boxes_path, modelfile):
 def classify_dir_images(input_path, boxes_path, modelfile):
     assert input_path.is_dir() 
     assert boxes_path.is_dir() 
-    pat = r"(?:jpg|JPG|jpeg|JPEG)$"   # ? = non capturing group
+    pat = r"(?:jpg|JPG|jpeg|JPEG|png)$"   # ? = non capturing group
     for fname in input_path.glob("*"):
         if re.search(pat, str(fname)):
             classify_image(fname, boxes_path, modelfile)
