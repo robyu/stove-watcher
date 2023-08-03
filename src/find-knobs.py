@@ -16,77 +16,100 @@ import boundingboxfile
 """
 standalone interface to knobid.py
 process image files to locate knobs
+
+read pickle.rect file (or create a new one)
+add bboxes to each image
+write pickle.rect file
+
 """
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Argument Parser')
 
-    parser.add_argument('-m', '--modelfile', type=str, default='../modelfile.eim', help='Model filename')
-    parser.add_argument('input_jpg', type=str, help='Input JPEG filename or input directory')
-    parser.add_argument('boxes_dir', type=str, help='Output Bounding Box directory')
+    parser.add_argument('-m', '--modelfile', type=Path, default=Path('../modelfile.eim'), help='Model filename')
+    parser.add_argument('input_path', type=Path, help='Input image filename or input directory')
+    parser.add_argument('boxes_path', type=Path, help='Output Bounding Box directory')
+    parser.add_argument('-d', '--delete', action='store_true', default=False, help='delete existing rect.pickle')
 
     args = parser.parse_args()
 
-    # Check if mandatory arguments are provided
-    if not args.input_jpg or not args.modelfile:
-        parser.error('input_jpg and modelfile are mandatory arguments')
-
     return args
 
-def make_box_json_fname(boxes_path, input_jpg):
-    out_fname = boxes_path / Path(input_jpg.stem).with_suffix(".json")
+def make_box_json_fname(boxes_path, image_path):
+    out_fname = boxes_path / Path(image_path.stem).with_suffix(".json")
     return out_fname
 
-def classify_image(input_jpg, boxes_path, modelfile):
-    assert input_jpg.exists()
+def classify_image(image_path, boxes_path, modelfile, bbox_file):
+    assert image_path.exists()
     
     kid = knobid.KnobId(modelfile)
-    img_rgb = helplib.read_image_rgb(input_jpg)
+    img_rgb = helplib.read_image_rgb(image_path)
     bb_l, img_out = kid.locate_knobs(img_rgb)  # bb_l = list of bounding boxes
-    d = boundingboxfile.make_id_dict(input_jpg,
-                                     img_rgb.shape[0],
-                                     img_rgb.shape[1],
-                                     bb_l)
-
-    # generate output filename
-    bbox_out_fname = make_box_json_fname(boxes_path, input_jpg)
-         
-    with open(bbox_out_fname, "w") as f:
-        json.dump(d, f)
+    ibb = boundingboxfile.ImageBBoxes(image_path,
+                                      img_rgb.shape[1], # width = cols
+                                      img_rgb.shape[0] # height = rows
+                                      )
+    for bb in bb_l:
+        ibb.add_bbox(boundingboxfile.BBox(bb['x'],
+                                          bb['y'],
+                                          bb['width'],
+                                          bb['height'],
+                                          value=bb['value']))
     #
-    print(f"{input_jpg} -> {len(bb_l)} knobs ->  {bbox_out_fname}")
 
-def classify_dir_images(input_path, boxes_path, modelfile):
+    bbox_file[image_path] = ibb
+    print(f"{image_path} has {len(bb_l)} knobs")
+
+    return bbox_file
+
+def classify_dir_images(input_path, boxes_path, modelfile, bbox_file):
     assert input_path.is_dir() 
     assert boxes_path.is_dir() 
     pat = r"(?:jpg|JPG|jpeg|JPEG|png)$"   # ? = non capturing group
     for fname in input_path.glob("*"):
         if re.search(pat, str(fname)):
-            classify_image(fname, boxes_path, modelfile)
+            bbox_file = classify_image(fname, boxes_path, modelfile, bbox_file)
         #
     #
+    return bbox_file
 
+def init_bbox_file(input_path,
+                   box_path,
+                   delete_flag):
+    if delete_flag:
+        pickle_path = boundingboxfile.make_pickle_path(input_path)
+        if pickle_path.is_file():
+            os.remove(pickle_path)
+        #
+    #
+    bbox_file = boundingboxfile.BBoxFile(input_path)
+    return bbox_file
 
 if __name__ == "__main__":
     args = parse_arguments()
-    assert Path(args.modelfile).exists, f"could not locate model file {args.modelfile}"
-    input_path = Path(args.input_jpg)
-    boxes_path = Path(args.boxes_dir)
+    assert args.modelfile.exists(), f"could not locate model file {args.modelfile}"
 
-    if boxes_path.is_dir()==False:
-        boxes_path.mkdir()
+    if args.boxes_path.is_dir()==False:
+        args.boxes_path.mkdir()
     #
-    if input_path.is_dir():
-        classify_dir_images(input_path,
-                            boxes_path,
-                            args.modelfile)
-    elif input_path.is_file():
-        classify_image(input_path,
-                       boxes_path,
-                       args.modelfile)
+    
+    bbox_file = init_bbox_file(args.input_path,
+                               args.boxes_path,
+                               args.delete)
+    print(bbox_file)
+    if args.input_path.is_dir():
+        bbox_file = classify_dir_images(args.input_path,
+                            args.boxes_path,
+                            args.modelfile,
+                            bbox_file)
     else:
-        assert False, "bad combination of input directories and paths"
+        assert args.input_path.is_file()
+        bbox_file = classify_image(args.input_path,
+                                   args.boxes_path,
+                                   args.modelfile,
+                                   bbox_file)
+    
     #
-
+    bbox_file.save()
     
     

@@ -160,6 +160,16 @@ class BBoxFile:  # a collection of ImageBBoxes
             print(f"could not load {self.pickle_path}")
         #
 
+    def __str__(self):
+        import pudb; pudb.set_trace()
+        s = f"pickle path: {self.pickle_path}\n"
+        for k, v in self.images_d.items():
+            s +=  f"{str(k):30s}: {v.get_num_bboxes} boxes"
+        #
+        return s
+        
+            
+
     def __getitem__(self, key):
         if isinstance(key, str)==False:
             key = str(key)
@@ -168,6 +178,7 @@ class BBoxFile:  # a collection of ImageBBoxes
     def __setitem__(self, key, value):
         if isinstance(key, str)==False:
             key = str(key)
+        assert isinstance(value, ImageBBoxes)
         self.images_d[key] = value
 
     def __contains__(self, key):
