@@ -18,7 +18,6 @@ def parse_arguments():
 
     default_thresh = 0.95
     
-    parser.add_argument('-b', '--bbjson', type=Path, default=None, help='JSON file with bounding boxes (output of find-knobs.py)')
     parser.add_argument('-p', '--bbpickle', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
     parser.add_argument('-o','--out_dir', type=Path, help='Output directory')
     parser.add_argument('orig_dir', type=Path, help='directory containing original image')

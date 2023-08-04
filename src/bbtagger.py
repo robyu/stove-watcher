@@ -14,13 +14,16 @@ def parse_args():
 
     valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
-    parser.add_argument("image_path", default='', type=Path)
+    parser.add_argument("image_path", type=Path, help="path to image or image dir")
+    parser.add_argument("-o", "--out_path", type=Path,
+                        default=Path('../data/out-bbtagger/'), help="destination path for output rect.pickle (OR for audit: pickle input path)")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     return parser.parse_args()
 
 class Tagger:
-    def __init__(self, image_fname):
-        self.image_path = Path(image_fname)
+    def __init__(self, image_path, out_path):
+        assert isinstance(image_path, Path)
+        self.image_path = image_path
         self.root = Tk()
         self.root.title(f"{self.image_path.stem}")
 
@@ -44,7 +47,8 @@ class Tagger:
         #
         # load rects pickle file and extract or initialize
         # the list of rectangles for this file
-        self.bbox_file = boundingboxfile.BBoxFile(self.image_path)
+        assert isinstance(out_path, Path)
+        self.bbox_file = boundingboxfile.BBoxFile(out_path)
 
         if self.image_path in self.bbox_file:
             self.img_bboxes = self.bbox_file[self.image_path]
@@ -194,11 +198,13 @@ def tag_next_untagged(image_dir):
     tag_one_image(target_path)
     
 
-def audit_tags(image_dir):
+def audit_tags(image_dir, out_path):
     assert image_dir.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(image_dir)
+    bboxfile = boundingboxfile.BBoxFile(out_path)
     files_l = find_img_files(image_dir)
 
+    print(f"""\
+|{"#":3s}| {"file path":30s} | {"tagged?":8s} | {"# boxes":10s} |""")
     for n, file_path in enumerate(files_l):
         num_bboxes = 0
         is_tagged = False
@@ -207,7 +213,7 @@ def audit_tags(image_dir):
             is_tagged = True
         #
         print(f"""\
-|{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):5s} | {num_bboxes:2d} |""")
+|{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):8s} | {num_bboxes:10d} |""")
     #
     
 def bbox_file_to_json(image_dir):
@@ -220,7 +226,7 @@ if __name__=="__main__":
     assert isinstance(args.image_path, Path)
 
     if args.delete==True:
-        pickle_path = boundingboxfile.make_pickle_path(args.image_path)
+        pickle_path = boundingboxfile.make_pickle_path(args.out_path)
         if pickle_path.is_file():
             os.remove(pickle_path)
     #
@@ -240,9 +246,10 @@ if __name__=="__main__":
         # tag next untagged image
         tag_next_untagged(args.image_path)
     elif args.cmd=="audit":
-        audit_tags(args.image_path)
+        audit_tags(args.image_path,
+                   args.out_path)
     elif args.cmd=="writejson":
-        bbox_file_to_json(args.image_path)
+        bbox_file_to_json(args.out_path)
     else:
         print(f"Unrecognized command: {args.cmd}")
         sys.exit(0)

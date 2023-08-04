@@ -161,10 +161,9 @@ class BBoxFile:  # a collection of ImageBBoxes
         #
 
     def __str__(self):
-        import pudb; pudb.set_trace()
         s = f"pickle path: {self.pickle_path}\n"
         for k, v in self.images_d.items():
-            s +=  f"{str(k):30s}: {v.get_num_bboxes} boxes"
+            s +=  f"{str(k):30s}: {v.get_num_bboxes()} boxes\n"
         #
         return s
         
