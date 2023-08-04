@@ -148,7 +148,7 @@ def make_pickle_path(image_path):
 class BBoxFile:  # a collection of ImageBBoxes
     def __init__(self, image_path):
         self.pickle_path = make_pickle_path(image_path)
-        print(f"pickle path is {self.pickle_path}")
+        print(f"pickle path is {self.pickle_path}...", end='')
 
         # images_d is associative array: {image filename: image stats & list of bounding boxes}
         self.images_d = {}
@@ -157,7 +157,9 @@ class BBoxFile:  # a collection of ImageBBoxes
             with open(self.pickle_path, "rb") as f:
                 self.images_d = pickle.load(f)
         except FileNotFoundError:
-            print(f"could not load {self.pickle_path}")
+            print(f"NOT FOUND")
+        else:
+            print("loaded")
         #
 
     def __str__(self):

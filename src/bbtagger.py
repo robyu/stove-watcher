@@ -21,6 +21,8 @@ def parse_args():
     return parser.parse_args()
 
 class Tagger:
+    MIN_RECT_WIDTH = 24
+    MIN_RECT_HEIGHT = 24
     def __init__(self, image_path, out_path):
         assert isinstance(image_path, Path)
         self.image_path = image_path
@@ -129,6 +131,12 @@ class Tagger:
     def handle_mousedrag(self, event):
         self.end_x, self.end_y = event.x, event.y
 
+        #
+        # limit min size of rect
+        if self.end_x - self.start_x < Tagger.MIN_RECT_WIDTH:
+            self.end_x = self.start_x + Tagger.MIN_RECT_WIDTH
+        #
+        
         # draw the rect
         if self.curr_rect:
             self.canvas.delete(self.curr_rect)
@@ -137,7 +145,7 @@ class Tagger:
                                                       self.end_x, self.end_y,
                                                       outline='green')  
 
-        print(f"mousedrag {self.end_x}, {self.end_y}")
+        print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
 
     def handle_mouseup(self, event):
         self.rect_l.append(self.curr_rect)
@@ -158,30 +166,31 @@ def find_img_files(image_dir):
     return jpg_files + png_files
 
     
-def tag_one_image(image_fname):
-    assert image_fname.exists()
-    tagger = Tagger(image_fname)
+def tag_one_image(image_path, out_path):
+    assert image_path.exists()
+    print(f"tagging {image_path}")
+    tagger = Tagger(image_path, out_path)
     tagger.display()
     print(tagger.retval)
     return tagger.retval
     
 
-def tag_all_images(image_dir):
+def tag_all_images(image_dir, out_path):
     assert image_dir.is_dir()
     #
     # load each image in the directory
     
     files_l = find_img_files(image_dir)
     for p in files_l:
-        retval = tag_one_image(p)
+        retval = tag_one_image(p, out_path)
         if retval:
             break  # user indicated to exit the entire loop
     #
     
 
-def tag_next_untagged(image_dir):
+def tag_next_untagged(image_dir, out_path):
     assert image_dir.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(image_dir)
+    bboxfile = boundingboxfile.BBoxFile(out_path)
     files_l = find_img_files(image_dir)
     assert len(files_l) > 0
 
@@ -195,7 +204,7 @@ def tag_next_untagged(image_dir):
     target_path = image_dir / fname
     print(target_path)
     assert target_path.exists()
-    tag_one_image(target_path)
+    tag_one_image(target_path, out_path)
     
 
 def audit_tags(image_dir, out_path):
@@ -216,9 +225,9 @@ def audit_tags(image_dir, out_path):
 |{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):8s} | {num_bboxes:10d} |""")
     #
     
-def bbox_file_to_json(image_dir):
-    assert image_dir.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(image_dir)
+def bbox_file_to_json(out_path):
+    assert out_path.is_dir()
+    bboxfile = boundingboxfile.BBoxFile(out_path)
     bboxfile.write_json()
 
 if __name__=="__main__":
@@ -236,15 +245,18 @@ if __name__=="__main__":
         if Path(args.image_path).exists()==False:
             args.image_path = Path('../data/out-resized/apple-2023-05-14-19-18-2.jpg')
         #
-        tag_one_image(args.image_path)
+        tag_one_image(args.image_path,
+                      args.out_path)
     elif args.cmd=="tagall":
         #
         # iterate through all images in a path
-        tag_all_images(args.image_path)
+        tag_all_images(args.image_path,
+                       args.out_path)
     elif args.cmd=="tagnext":
         #
         # tag next untagged image
-        tag_next_untagged(args.image_path)
+        tag_next_untagged(args.image_path,
+                          args.out_path)
     elif args.cmd=="audit":
         audit_tags(args.image_path,
                    args.out_path)
