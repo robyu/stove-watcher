@@ -3,7 +3,7 @@
 
 import cv2
 #import os
-#import numpy as np
+import numpy as np
 import json
 import argparse
 from pathlib import Path
@@ -18,37 +18,21 @@ def parse_arguments():
 
     default_thresh = 0.95
     
-    parser.add_argument('-p', '--bbpickle', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
-    parser.add_argument('-o','--out_dir', type=Path, help='Output directory')
+    parser.add_argument('-p', '--picklepath', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
+    parser.add_argument('-o','--out_dir', type=Path, default=Path('../data/out-extractedknobs'), help='Output directory for extracted knob images')
     parser.add_argument('orig_dir', type=Path, help='directory containing original image')
     parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
-    parser.add_argument('-x', '--extrawidth', type=int, default=30, help='extra bounding box width, in pixels')
-    parser.add_argument('-y', '--extraheight', type=int, default=30, help='extra bounding box height, in pixels')
+    parser.add_argument('-x', '--extrawidth', type=int, default=0, help='extra bounding box width, in pixels')
+    parser.add_argument('-y', '--extraheight', type=int, default=0, help='extra bounding box height, in pixels')
 
     args = parser.parse_args()
 
     return args
 
-def read_bb_json(bb_json_path):
-    print(f"reading bboxes from {bb_json_path}")
-    with open(bb_json_path, "r") as f:
-        d = json.load(f)
-
-    #
-    print(f"input image: {d['image_fname']}")
-    print(f"contains {len(d['bounding_boxes'])} bounding boxes")
-    ibb = boundingboxfile.dict_to_bboxes(d)
-
-    return ibb
-
-# def read_orig_image(cropped_img_fname, orig_dir):
-#     orig_img_path = Path("out-renamed") / Path(cropped_img_fname).name
-#     assert orig_img_path.exists(), f"does not exist: {orig_img_path}"
-#     img_rgb = helplib.read_image_rgb(orig_img_path)
-#     return img_rgb
     
 def compute_crop_params(orig_width, orig_height, cropped_width, cropped_height):
     assert cropped_width==cropped_height
+    assert orig_width >= orig_height
 
     # resize.py resized orig image to height=640, width maintains ratio
     scalef = float(orig_height)/cropped_height
@@ -57,25 +41,20 @@ def compute_crop_params(orig_width, orig_height, cropped_width, cropped_height):
     # assume that we cropped the equal-sized "wings" of the resized image in
     # order to make a square image
     # the size of a wing is the horiz offset
-    h_offset = int((orig_width - scalef * cropped_width)/2.0)
+    #h_offset = int((orig_width - orig_height)/2.0)
+    h_offset = int(170 * scalef) # see resize.py
     return scalef, h_offset
 
-def mark_boxes(img, bb_l, value_thresh):
-    for n, box in enumerate(bb_l):
-        if box['value'] < value_thresh:
-            continue
-        else:
-            x = box['x']
-            y = box['y']
-            w = box['width']
-            h = box['height']
-            cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        #
-    #
+def draw_box(img, x0, y0, x1, y1):
+    cv2.rectangle(img,
+                  (x0, y0),
+                  (x1, y1),
+                  (0, 255, 0), 2)
+
     #cv2.rectangle(img, (500, 500), (700, 700), (0, 255, 0), 10)
     return img
 
-def extract_boxes(img, bb_l, value_thresh, out_img_stem):
+def OLDextract_boxes(img, bb_l, value_thresh, out_img_stem):
     for n, box in enumerate(bb_l):
         if box['value'] < value_thresh:
             continue
@@ -91,151 +70,146 @@ def extract_boxes(img, bb_l, value_thresh, out_img_stem):
         #
     #
 
-def adjust_bounding_boxes(bb_l, scalef, h_offset, extra_width, extra_height):
-    adj_bb_l = []
-    for bb in bb_l:
-        x0 = int(scalef * bb['x'] + h_offset - extra_width/2.0)
-        if x0 <= 0:
-            x0 = 0
+    
+def adjust_bounding_box(bb,
+                        scalef,
+                        h_offset,
+                        extra_width,
+                        extra_height,
+                        orig_width,
+                        orig_height,
+                        ):
+    x0 = int(scalef * bb.x + h_offset - extra_width/2.0)
+    x0 = max(0, x0)
 
-        y0 = int(scalef * bb['y'] - extra_height/2.0)
-        if y0 <= 0:
-            y0 = 0
+    y0 = int(scalef * bb.y - extra_height/2.0)
+    y0 = max(0, y0)
 
-        adj_bb_l.append({'x': x0,
-                         'y': y0,
-                         'width': int(scalef * bb['width'] + extra_width),
-                         'height': int(scalef * bb['height'] + extra_height),
-                         'value': bb['value']})
-    #
-    return adj_bb_l
+    x1 = x0 + int(scalef * bb.w) + int(extra_width/2.0)
+    x1 = min(x1, orig_width)
+    
+    y1 = y0 + int(scalef * bb.h) + int(extra_height/2.0)
+    y1 = min(y1, orig_height)
+    return x0, y0, x1, y1
         
+# def make_knob_fname(out_dir, orig_img_fname, n):
+#     out_fname = out_dir / f"{orig_img_fname.stem}-b{n:02d}.png"
+#     return out_fname
 
-def extract_from_single_image(ibb, # imageBBox object
-                              orig_path,
-                              out_path,
-                              value_thresh,
-                              extra_width=0,
-                              extra_height=0
-                              ):
+def extract_knobs_single_image(ibb, # imageBBox object
+                               orig_img_fname,
+                               out_dir,
+                               value_thresh,
+                               extra_width=0,
+                               extra_height=0,
+                               ):
 
     # compose filenames of input image and output images
-    orig_img_path = orig_path / ibb.image_path.name  # path of original (uncropped, un-resized) image
-    assert orig_img_path.exists()
-    out_img_path_stem = out_path / ibb.image_path.stem
+    assert orig_img_fname.exists()
+    out_img_path_stem = out_dir / ibb.image_path.stem
 
     # load original image
-    orig_img_rgb = helplib.read_image_rgb(orig_img_path)
+    orig_img_rgb = helplib.read_image_rgb(orig_img_fname)
 
     # recompute crop parameters to fit orig image
     scalef, h_offset = compute_crop_params(orig_img_rgb.shape[1],
                                            orig_img_rgb.shape[0],
                                            ibb.image_width,
                                            ibb.image_height)
+    marked_img = np.copy(orig_img_rgb)
+    n = 0
+    for bb in ibb:
+        if bb.value < value_thresh:
+            continue
+        #
+        
+        x0, y0, x1, y1 = adjust_bounding_box(bb,
+                                             scalef,
+                                             h_offset,
+                                             extra_width,
+                                             extra_height,
+                                             orig_img_rgb.shape[1], # orig width
+                                             orig_img_rgb.shape[0]) # orig height
+        #
+        # extract knob image
+        knob_img = orig_img_rgb[y0:y1, x0:x1]
+        # knob_fname = make_knob_fname(out_dir,
+        #                              orig_img_fname,
+        #                              n)
+        knob_fname = out_img_path_stem.parent / f"{out_img_path_stem.name}-b{n:02d}.png"
+        helplib.write_image(knob_fname, knob_img)
 
-    # derive new bounding box coords
-    adjusted_bb_l = adjust_bounding_boxes(ibb.bbox_l, # list of bounding boxes
-                                          scalef,
-                                          h_offset,
-                                          extra_width,
-                                          extra_height)
+        #
+        # mark up image
+        marked_img = draw_box(marked_img,
+                                   x0, y0, x1, y1)
+        # increment only if valid threshold
+        n += 1
+    #
 
-    # extract each knob to a separate image file
-    extract_boxes(orig_img_rgb, adjusted_bb_l, value_thresh, out_img_path_stem)
-
-    # mark the knobs on the original image
-    marked_img = mark_boxes(orig_img_rgb, adjusted_bb_l, value_thresh)
     marked_img_path = out_img_path_stem.with_suffix(".png")
     helplib.write_image(marked_img_path, marked_img)
     print(f"wrote marked image: {marked_img_path}")
 
-def extract_from_all_images_json(bb_json_path,
-                            orig_path,
-                            out_path,
-                            value_thresh,
-                            extra_width=0,
-                            extra_height=0):
-    assert bb_json_path.is_dir()
-    for bb_fname in bb_json_path.glob("*.json"):
-        try:
-            # keys: img_fname, img_width, img_height, bb (a list)
-            ibb = read_bb_json(bb_fname)
-            
-            extract_from_single_image(ibb,
-                                      orig_path,
-                                      out_path,
-                                      value_thresh,
-                                      extra_width=extra_width,
-                                      extra_height=extra_height)
-        except FileNotFoundError:
-            print(f"error while reading {bb_fname}. Skipping...")
+
+def find_orig_img_fname(resized_fname,
+                    orig_dir):
+    orig_fname = orig_dir / resized_fname.name
+
+    suffix_l = ['.png', '.jpg']
+
+    # try suffixes until we find a valid filename
+    found_img = False
+    for s in suffix_l:
+        probe_fname = orig_fname.with_suffix(s)
+        if probe_fname.exists():
+            found_img=True
+            break
         #
-            
     #
+    assert found_img, f"original image not found corresponding to  {resized_fname}"
+    return probe_fname
 
-def extract_from_all_images_pickle(bb_pickle_path,
-                                   orig_path,
-                                   out_path,
+def extract_knobs_all_images(bb_file,
+                             orig_dir,
+                             out_dir,
+                             value_thresh = .90,
+                             extra_width=0,
+                             extra_height=0,
+                             ):
+    assert isinstance(bb_file, boundingboxfile.BBoxFile)
+    assert orig_dir.is_dir()
+    out_dir.mkdir(exist_ok=True)
+
+    for bb_fname, ibb in bbox_file.images_d.items():
+        print(f"resized image: {bb_fname}")
+        orig_img_fname = find_orig_img_fname(Path(bb_fname),
+                                             orig_dir)
+        extract_knobs_single_image(ibb,
+                                   orig_img_fname,
+                                   out_dir,
                                    value_thresh,
-                                   extra_width=0,
-                                   extra_height=0):
-    assert bb_pickle_path.is_file()
-    bbox_file = boundingboxfile.BBoxFile(bb_pickle_path)
+                                   extra_width,
+                                   extra_height)
 
-    #for bb_fname in bb_json_path.glob("*.json"):
-    for bb_fname in bbox_file.d.keys():
-        try:
-            bb_d = bbox_file.d[bb_fname]
-            extract_from_single_image(bb_d,
-                                      orig_path,
-                                      out_path,
-                                      value_thresh,
-                                      extra_width=extra_width,
-                                      extra_height=extra_height)
-        except FileNotFoundError:
-            print(f"error while reading {bb_fname}. Skipping...")
-        #
-            
+                
     #
     
     
 if __name__ == "__main__":
     args = parse_arguments()
-    args.out_dir.mkdir(exist_ok=True)
 
-    if args.bbjson:
-        if args.bbjson.is_file():
-            # keys: img_fname, img_width, img_height, bb (a list)
-            bb_d = read_bb_json(args.bbjson)
+    assert args.picklepath.is_file()
 
-            extract_from_single_image(bb_d,
-                                      args.orig_dir,
-                                      args.out_dir,
-                                      args.value_thresh,
-                                      extra_width=args.extrawidth,
-                                      extra_height=args.extraheight)
-        elif args.bbjson.is_dir():
-            extract_from_all_images_json(args.bbjson,
-                                         args.orig_dir,
-                                         args.out_dir,
-                                         args.value_thresh,
-                                         extra_width=args.extrawidth,
-                                         extra_height=args.extraheight)
-        else:
-            print(f"{args.bbjson} is neither a file nor a directory")
-            sys.exit(1)
-        #
-    elif args.bbpickle and args.bbpickle.is_file():
-            extract_from_all_images_pickle(args.bbpickle,
-                                           args.orig_dir,
-                                           args.out_dir,
-                                           args.value_thresh,
-                                           extra_width=args.extrawidth,
-                                           extra_height=args.extraheight)
-    else:
-        print("invalid args")
-        sys.exit(1)
-    #
+    bbox_file = boundingboxfile.BBoxFile(args.picklepath)
+
+    extract_knobs_all_images(bbox_file,
+                             args.orig_dir,
+                             args.out_dir,
+                             value_thresh=args.value_thresh,
+                             extra_width=args.extrawidth,
+                             extra_height=args.extraheight)
+
     
 
 

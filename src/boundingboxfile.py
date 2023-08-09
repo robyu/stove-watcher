@@ -4,7 +4,7 @@ from pathlib import Path
 from functools import partial
 import json
 import pickle
-
+import cv2
 
 class BBox:
     def __init__(self, x, y, w, h, value=0.0, label='knob'):
@@ -143,11 +143,17 @@ def make_pickle_path(image_path):
     pickle_path = bb_path / "rects.pickle"
     return pickle_path
 
+def mark_bb_on_img(img, bb):
+    cv2.rectangle(img,
+                  (bb.x, bb.y),
+                  (bb.x + bb.w,
+                   bb.y  + bb.h),
+                  (0, 255, 0), 2)
     
     
 class BBoxFile:  # a collection of ImageBBoxes
-    def __init__(self, image_path):
-        self.pickle_path = make_pickle_path(image_path)
+    def __init__(self, pickle_dir):
+        self.pickle_path = make_pickle_path(pickle_dir)
         print(f"pickle path is {self.pickle_path}...", end='')
 
         # images_d is associative array: {image filename: image stats & list of bounding boxes}
@@ -172,24 +178,38 @@ class BBoxFile:  # a collection of ImageBBoxes
             
 
     def __getitem__(self, key):
+        """
+        implements bbox_file[fname] = bbox_file.images_d[fname]
+        """
         if isinstance(key, str)==False:
             key = str(key)
         return self.images_d[key]
 
     def __setitem__(self, key, value):
+        """
+        implements bbox_file[fname] = ImageBBoxes
+        equiv to bbox_file.images_d[fname] = ImageBBoxes
+        """
         if isinstance(key, str)==False:
             key = str(key)
         assert isinstance(value, ImageBBoxes)
         self.images_d[key] = value
 
     def __contains__(self, key):
+        """
+        implements "fname in bbox_file"
+        equiv to "fname in bbox_file.images_d"
+        """
         if isinstance(key, str)==False:
             key = str(key)
         return key in self.images_d
 
+    
     def save(self):
         with open(self.pickle_path, "wb") as f:
             pickle.dump(self.images_d, f)
+
+
 
         
 

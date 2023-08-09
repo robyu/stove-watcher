@@ -243,7 +243,8 @@ if __name__=="__main__":
         #
         # tag a single image
         if Path(args.image_path).exists()==False:
-            args.image_path = Path('../data/out-resized/apple-2023-05-14-19-18-2.jpg')
+            # for testing
+            args.image_path = Path('../data/out-resized/general/general-0000.png')
         #
         tag_one_image(args.image_path,
                       args.out_path)
