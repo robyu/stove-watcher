@@ -11,12 +11,13 @@ import os
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    default_out_path = Path('../data/out-bbtagger/')
 
     valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", type=Path, help="path to image or image dir")
     parser.add_argument("-o", "--out_path", type=Path,
-                        default=Path('../data/out-bbtagger/'), help="destination path for output rect.pickle (OR for audit: pickle input path)")
+                        default=default_out_path, help=f"destination path for output rect.pickle (OR for audit: pickle input path); default {default_out_path}")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     return parser.parse_args()
 
@@ -83,7 +84,7 @@ class Tagger:
         self.root.mainloop()
 
     def handle_keypress(self, event):
-        print(f"got keypress {event.char.lower()}")
+        #print(f"got keypress {event.char.lower()}")
         if event.char.lower() == 'q':
             #
             # copy canvas rect list back into all_files_d
@@ -169,6 +170,7 @@ def find_img_files(image_dir):
 def tag_one_image(image_path, out_path):
     assert image_path.exists()
     print(f"tagging {image_path}")
+    out_path.mkdir(exist_ok=True)
     tagger = Tagger(image_path, out_path)
     tagger.display()
     print(tagger.retval)
@@ -228,7 +230,7 @@ def audit_tags(image_dir, out_path):
 def bbox_file_to_json(out_path):
     assert out_path.is_dir()
     bboxfile = boundingboxfile.BBoxFile(out_path)
-    bboxfile.write_json()
+    bboxfile.write_ei_json()
 
 if __name__=="__main__":
     args = parse_args()

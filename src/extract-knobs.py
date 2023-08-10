@@ -17,33 +17,19 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract Knobs')
 
     default_thresh = 0.95
+    default_extra_width = 20
+    default_extra_height = 30
     
     parser.add_argument('-p', '--picklepath', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
     parser.add_argument('-o','--out_dir', type=Path, default=Path('../data/out-extractedknobs'), help='Output directory for extracted knob images')
     parser.add_argument('orig_dir', type=Path, help='directory containing original image')
     parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
-    parser.add_argument('-x', '--extrawidth', type=int, default=0, help='extra bounding box width, in pixels')
-    parser.add_argument('-y', '--extraheight', type=int, default=0, help='extra bounding box height, in pixels')
+    parser.add_argument('-x', '--extrawidth', type=int, default=20, help=f'extra bounding box width, in pixels, default={default_extra_width}')
+    parser.add_argument('-y', '--extraheight', type=int, default=30, help=f'extra bounding box height, in pixels, default={default_extra_height}')
 
     args = parser.parse_args()
 
     return args
-
-    
-def compute_crop_params(orig_width, orig_height, cropped_width, cropped_height):
-    assert cropped_width==cropped_height
-    assert orig_width >= orig_height
-
-    # resize.py resized orig image to height=640, width maintains ratio
-    scalef = float(orig_height)/cropped_height
-    assert scalef > 1.0
-
-    # assume that we cropped the equal-sized "wings" of the resized image in
-    # order to make a square image
-    # the size of a wing is the horiz offset
-    #h_offset = int((orig_width - orig_height)/2.0)
-    h_offset = int(170 * scalef) # see resize.py
-    return scalef, h_offset
 
 def draw_box(img, x0, y0, x1, y1):
     cv2.rectangle(img,
@@ -54,23 +40,6 @@ def draw_box(img, x0, y0, x1, y1):
     #cv2.rectangle(img, (500, 500), (700, 700), (0, 255, 0), 10)
     return img
 
-def OLDextract_boxes(img, bb_l, value_thresh, out_img_stem):
-    for n, box in enumerate(bb_l):
-        if box['value'] < value_thresh:
-            continue
-        else:
-            x = box['x']
-            y = box['y']
-            w = box['width']
-            h = box['height']
-            knob = img[y:y+h, x:x+w]
-            assert n < 100
-            out_fname = out_img_stem.parent / f"{out_img_stem.name}-b{n:02d}.png"
-            helplib.write_image(out_fname, knob)
-        #
-    #
-
-    
 def adjust_bounding_box(bb,
                         scalef,
                         h_offset,
@@ -85,10 +54,10 @@ def adjust_bounding_box(bb,
     y0 = int(scalef * bb.y - extra_height/2.0)
     y0 = max(0, y0)
 
-    x1 = x0 + int(scalef * bb.w) + int(extra_width/2.0)
+    x1 = x0 + int(scalef * bb.w) + extra_width
     x1 = min(x1, orig_width)
     
-    y1 = y0 + int(scalef * bb.h) + int(extra_height/2.0)
+    y1 = y0 + int(scalef * bb.h) + extra_height
     y1 = min(y1, orig_height)
     return x0, y0, x1, y1
         
@@ -112,10 +81,10 @@ def extract_knobs_single_image(ibb, # imageBBox object
     orig_img_rgb = helplib.read_image_rgb(orig_img_fname)
 
     # recompute crop parameters to fit orig image
-    scalef, h_offset = compute_crop_params(orig_img_rgb.shape[1],
-                                           orig_img_rgb.shape[0],
-                                           ibb.image_width,
-                                           ibb.image_height)
+    scalef, h_offset = helplib.compute_crop_params(orig_img_rgb.shape[1],
+                                                   orig_img_rgb.shape[0],
+                                                   ibb.image_width,
+                                                   ibb.image_height)
     marked_img = np.copy(orig_img_rgb)
     n = 0
     for bb in ibb:
@@ -179,7 +148,10 @@ def extract_knobs_all_images(bb_file,
                              ):
     assert isinstance(bb_file, boundingboxfile.BBoxFile)
     assert orig_dir.is_dir()
-    out_dir.mkdir(exist_ok=True)
+    try:
+        out_dir.mkdir(exist_ok=True)
+    except FileNotFoundError:
+        pass
 
     for bb_fname, ibb in bbox_file.images_d.items():
         print(f"resized image: {bb_fname}")

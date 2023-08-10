@@ -209,6 +209,7 @@ class BBoxFile:  # a collection of ImageBBoxes
         with open(self.pickle_path, "wb") as f:
             pickle.dump(self.images_d, f)
 
+        print(f"wrote {self.pickle_path}")
 
 
         
@@ -221,9 +222,9 @@ class BBoxFile:  # a collection of ImageBBoxes
         json_d = {"version": 1,
                   "type": "bounding-box-labels"}
         bbox_per_file_l = []
-        for image_fname in self.image_d.keys():
-            imagebbox = self.image_d[image_fname]
-            if len(imagebbox.bb_l) <= 0:
+        for image_fname in self.images_d.keys():
+            imagebbox = self.images_d[image_fname]
+            if len(imagebbox.bbox_l) <= 0:
                 # no bounding boxes for this file, so skip to next
                 continue
             else:
@@ -241,4 +242,5 @@ class BBoxFile:  # a collection of ImageBBoxes
         with open(out_fname, "w") as f:
             json.dump(json_d, f)
         #
+        print(f"wrote EI JSON to {out_fname}")
         
