@@ -170,7 +170,7 @@ def find_img_files(image_dir):
 def tag_one_image(image_path, out_path):
     assert image_path.exists()
     print(f"tagging {image_path}")
-    out_path.mkdir(exist_ok=True)
+    out_path.mkdir(exist_ok=True, parents=True)
     tagger = Tagger(image_path, out_path)
     tagger.display()
     print(tagger.retval)

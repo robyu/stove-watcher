@@ -146,7 +146,7 @@ if __name__ == "__main__":
     assert args.modelfile.exists(), f"could not locate model file {args.modelfile}"
 
     if args.out_path.is_dir()==False:
-        args.out_path.mkdir()
+        args.out_path.mkdir(parents=True, exist_ok=True)
     #
     
     bbox_file = init_bbox_file(args.out_path,

@@ -148,10 +148,7 @@ def extract_knobs_all_images(bb_file,
                              ):
     assert isinstance(bb_file, boundingboxfile.BBoxFile)
     assert orig_dir.is_dir()
-    try:
-        out_dir.mkdir(exist_ok=True)
-    except FileNotFoundError:
-        pass
+    out_dir.mkdir(exist_ok=True, parents=True)
 
     for bb_fname, ibb in bbox_file.images_d.items():
         print(f"resized image: {bb_fname}")
