@@ -136,6 +136,8 @@ class Tagger:
         # limit min size of rect
         if self.end_x - self.start_x < Tagger.MIN_RECT_WIDTH:
             self.end_x = self.start_x + Tagger.MIN_RECT_WIDTH
+        if self.end_y - self.start_y < Tagger.MIN_RECT_HEIGHT:
+            self.end_y = self.start_y + Tagger.MIN_RECT_HEIGHT
         #
         
         # draw the rect
@@ -237,6 +239,8 @@ if __name__=="__main__":
     assert isinstance(args.image_path, Path)
 
     if args.delete==True:
+        assert args.cmd != "audit"
+        assert args.cmd != "writejson"
         pickle_path = boundingboxfile.make_pickle_path(args.out_path)
         if pickle_path.is_file():
             os.remove(pickle_path)
