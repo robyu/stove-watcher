@@ -214,14 +214,15 @@ class BBoxFile:  # a collection of ImageBBoxes
 
         
 
-    def _make_json_fname(self):
-        out_fname = self.pickle_path.parent / "bounding_boxes.labels"
+    def _make_json_fname(self, out_path):
+        out_fname = out_path / "bounding_boxes.labels"
         return out_fname
         
-    def write_ei_json(self):
+    def write_ei_json(self, out_path):
+        assert out_path.is_dir()
         json_d = {"version": 1,
                   "type": "bounding-box-labels"}
-        bbox_per_file_l = []
+        bbox_per_file_d = {}
         for image_fname in self.images_d.keys():
             imagebbox = self.images_d[image_fname]
             if len(imagebbox.bbox_l) <= 0:
@@ -237,13 +238,15 @@ class BBoxFile:  # a collection of ImageBBoxes
                                "x": bbox.x,
                                 "y": bbox.y,
                                 "width": bbox.w,
-                                "height": bbox.h} for bbox in imagebbox] 
-                file_bbox_d = {f"{image_fname}": json_bbox_l}
-                bbox_per_file_l.append(file_bbox_d)
+                                "height": bbox.h} for bbox in imagebbox]
+
+                # each dictionary entry key is *just* the name,
+                # not the path
+                bbox_per_file_d[Path(image_fname).name] = json_bbox_l
             #
         #
-        json_d['boundingBoxes'] = bbox_per_file_l
-        out_fname = self._make_json_fname()
+        json_d['boundingBoxes'] = bbox_per_file_d
+        out_fname = self._make_json_fname(out_path)
         with open(out_fname, "w") as f:
             json.dump(json_d, f)
         #

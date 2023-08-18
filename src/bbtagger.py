@@ -229,10 +229,11 @@ def audit_tags(image_dir, pickle_path):
 |{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):8s} | {num_bboxes:10d} |""")
     #
     
-def bbox_file_to_json(pickle_path):
+def bbox_file_to_json(pickle_path, out_path):
     assert pickle_path.is_dir()
+    assert out_path.is_dir()
     bboxfile = boundingboxfile.BBoxFile(pickle_path)
-    bboxfile.write_ei_json()
+    bboxfile.write_ei_json(out_path)
 
 if __name__=="__main__":
     args = parse_args()
@@ -268,7 +269,8 @@ if __name__=="__main__":
         audit_tags(args.image_path,
                    args.pickle_path)
     elif args.cmd=="writejson":
-        bbox_file_to_json(args.pickle_path)
+        bbox_file_to_json(args.pickle_path,
+                          args.image_path)
     else:
         print(f"Unrecognized command: {args.cmd}")
         sys.exit(0)
