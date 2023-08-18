@@ -228,11 +228,16 @@ class BBoxFile:  # a collection of ImageBBoxes
                 # no bounding boxes for this file, so skip to next
                 continue
             else:
+                # json_bbox_l = [{"label":"knob",
+                #                "x": bbox[0],
+                #                "y": bbox[1],
+                #                "width": bbox[2],
+                #                "height": bbox[3]} for bbox in imagebbox.bbox_l] 
                 json_bbox_l = [{"label":"knob",
-                               "x": bbox[0],
-                               "y": bbox[1],
-                               "width": bbox[2],
-                               "height": bbox[3]} for bbox in imagebbox.bb_l]
+                               "x": bbox.x,
+                                "y": bbox.y,
+                                "width": bbox.w,
+                                "height": bbox.h} for bbox in imagebbox] 
                 file_bbox_d = {f"{image_fname}": json_bbox_l}
                 bbox_per_file_l.append(file_bbox_d)
             #

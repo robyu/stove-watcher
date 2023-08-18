@@ -11,13 +11,13 @@ import os
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    default_out_path = Path('../data/out-bbtagger/')
+    default_pickle_path = Path('../data/out-bbtagger/')
 
     valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", type=Path, help="path to image or image dir")
-    parser.add_argument("-o", "--out_path", type=Path,
-                        default=default_out_path, help=f"destination path for output rect.pickle (OR for audit: pickle input path); default {default_out_path}")
+    parser.add_argument("-p", "--pickle_path", type=Path,
+                        default=default_pickle_path, help=f"destination path for output rect.pickle (OR for audit: pickle input path); default {default_pickle_path}")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     return parser.parse_args()
 
@@ -169,32 +169,32 @@ def find_img_files(image_dir):
     return jpg_files + png_files
 
     
-def tag_one_image(image_path, out_path):
+def tag_one_image(image_path, pickle_path):
     assert image_path.exists()
     print(f"tagging {image_path}")
-    out_path.mkdir(exist_ok=True, parents=True)
-    tagger = Tagger(image_path, out_path)
+    pickle_path.mkdir(exist_ok=True, parents=True)
+    tagger = Tagger(image_path, pickle_path)
     tagger.display()
     print(tagger.retval)
     return tagger.retval
     
 
-def tag_all_images(image_dir, out_path):
+def tag_all_images(image_dir, pickle_path):
     assert image_dir.is_dir()
     #
     # load each image in the directory
     
     files_l = find_img_files(image_dir)
     for p in files_l:
-        retval = tag_one_image(p, out_path)
+        retval = tag_one_image(p, pickle_path)
         if retval:
             break  # user indicated to exit the entire loop
     #
     
 
-def tag_next_untagged(image_dir, out_path):
+def tag_next_untagged(image_dir, pickle_path):
     assert image_dir.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(out_path)
+    bboxfile = boundingboxfile.BBoxFile(pickle_path)
     files_l = find_img_files(image_dir)
     assert len(files_l) > 0
 
@@ -208,12 +208,12 @@ def tag_next_untagged(image_dir, out_path):
     target_path = image_dir / fname
     print(target_path)
     assert target_path.exists()
-    tag_one_image(target_path, out_path)
+    tag_one_image(target_path, pickle_path)
     
 
-def audit_tags(image_dir, out_path):
+def audit_tags(image_dir, pickle_path):
     assert image_dir.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(out_path)
+    bboxfile = boundingboxfile.BBoxFile(pickle_path)
     files_l = find_img_files(image_dir)
 
     print(f"""\
@@ -229,9 +229,9 @@ def audit_tags(image_dir, out_path):
 |{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):8s} | {num_bboxes:10d} |""")
     #
     
-def bbox_file_to_json(out_path):
-    assert out_path.is_dir()
-    bboxfile = boundingboxfile.BBoxFile(out_path)
+def bbox_file_to_json(pickle_path):
+    assert pickle_path.is_dir()
+    bboxfile = boundingboxfile.BBoxFile(pickle_path)
     bboxfile.write_ei_json()
 
 if __name__=="__main__":
@@ -241,7 +241,7 @@ if __name__=="__main__":
     if args.delete==True:
         assert args.cmd != "audit"
         assert args.cmd != "writejson"
-        pickle_path = boundingboxfile.make_pickle_path(args.out_path)
+        pickle_path = boundingboxfile.make_pickle_path(args.pickle_path)
         if pickle_path.is_file():
             os.remove(pickle_path)
     #
@@ -253,22 +253,22 @@ if __name__=="__main__":
             args.image_path = Path('../data/out-resized/general/general-0000.png')
         #
         tag_one_image(args.image_path,
-                      args.out_path)
+                      args.pickle_path)
     elif args.cmd=="tagall":
         #
         # iterate through all images in a path
         tag_all_images(args.image_path,
-                       args.out_path)
+                       args.pickle_path)
     elif args.cmd=="tagnext":
         #
         # tag next untagged image
         tag_next_untagged(args.image_path,
-                          args.out_path)
+                          args.pickle_path)
     elif args.cmd=="audit":
         audit_tags(args.image_path,
-                   args.out_path)
+                   args.pickle_path)
     elif args.cmd=="writejson":
-        bbox_file_to_json(args.out_path)
+        bbox_file_to_json(args.pickle_path)
     else:
         print(f"Unrecognized command: {args.cmd}")
         sys.exit(0)

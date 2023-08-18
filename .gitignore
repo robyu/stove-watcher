@@ -1,7 +1,10 @@
 .DS_Store
 *#
 *~
-data/out-*
+data/out-renamed
+data/out-resized
+data/out-extractknobs
+data/out-find-knobs
 readjpg/build
 readjpg/build*
 readjpg/CMakeFiles
