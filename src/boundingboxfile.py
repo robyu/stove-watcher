@@ -70,7 +70,7 @@ class ImageBBoxes:
                                            bbox.y,
                                            bbox.x + bbox.w,
                                            bbox.y + bbox.h,
-                                           outline='green')
+                                           outline='green', width=3)
             rect_l.append(rect)
         #
         return rect_l
@@ -148,7 +148,7 @@ def mark_bb_on_img(img, bb):
                   (bb.x, bb.y),
                   (bb.x + bb.w,
                    bb.y  + bb.h),
-                  (0, 255, 0), 2)
+                  (0, 255, 0), 3)
     
     
 class BBoxFile:  # a collection of ImageBBoxes

@@ -146,9 +146,9 @@ class Tagger:
         #
         self.curr_rect = self.canvas.create_rectangle(self.start_x, self.start_y,
                                                       self.end_x, self.end_y,
-                                                      outline='green')  
+                                                      outline='green', width=3)  
 
-        print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
+        #print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
 
     def handle_mouseup(self, event):
         self.rect_l.append(self.curr_rect)
@@ -166,7 +166,8 @@ def find_img_files(image_dir):
     assert image_dir.is_dir()
     jpg_files = list(image_dir.glob('*.jpg'))
     png_files = list(image_dir.glob('*.png'))
-    return jpg_files + png_files
+    img_files = sorted(jpg_files + png_files)
+    return img_files
 
     
 def tag_one_image(image_path, pickle_path):
