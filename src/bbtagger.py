@@ -13,12 +13,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
     default_pickle_path = Path('../data/out-bbtagger/')
 
-    valid_cmds = ['tag','tagall','tagnext','convert','audit','writejson']
+    valid_cmds = ['tag','tagall','tagnext','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
     parser.add_argument("image_path", type=Path, help="path to image or image dir")
     parser.add_argument("-p", "--pickle_path", type=Path,
                         default=default_pickle_path, help=f"destination path for output rect.pickle (OR for audit: pickle input path); default {default_pickle_path}")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
+    parser.add_argument("--fix_value_field", action="store_true", default=False, help="for all bbox entries, set value field to 1.0 and then rewrite rects.pickle")
     return parser.parse_args()
 
 class Tagger:
@@ -212,7 +213,7 @@ def tag_next_untagged(image_dir, pickle_path):
     tag_one_image(target_path, pickle_path)
     
 
-def audit_tags(image_dir, pickle_path):
+def audit_tags(image_dir, pickle_path, fix_value_field):
     assert image_dir.is_dir()
     bboxfile = boundingboxfile.BBoxFile(pickle_path)
     files_l = find_img_files(image_dir)
@@ -228,6 +229,16 @@ def audit_tags(image_dir, pickle_path):
         #
         print(f"""\
 |{n:3}| {(str(file_path))[-30:]:30s} | {str(is_tagged):8s} | {num_bboxes:10d} |""")
+    #
+
+    if fix_value_field:
+        print("setting value field in all bounding boxes")
+        for image_fname, bbi in bboxfile.images_d.items():
+            for bb in bbi:
+                bb.value = 1.0
+            #
+        #
+        bboxfile.save()
     #
     
 def bbox_file_to_json(pickle_path, out_path):
@@ -268,7 +279,9 @@ if __name__=="__main__":
                           args.pickle_path)
     elif args.cmd=="audit":
         audit_tags(args.image_path,
-                   args.pickle_path)
+                   args.pickle_path,
+                   args.fix_value_field)
+            
     elif args.cmd=="writejson":
         bbox_file_to_json(args.pickle_path,
                           args.image_path)

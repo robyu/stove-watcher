@@ -7,7 +7,7 @@ import pickle
 import cv2
 
 class BBox:
-    def __init__(self, x, y, w, h, value=0.0, label='knob'):
+    def __init__(self, x, y, w, h, value=1.0, label='knob'):
         self.x = x
         self.y = y
         self.w = w
@@ -175,7 +175,6 @@ class BBoxFile:  # a collection of ImageBBoxes
         #
         return s
         
-            
 
     def __getitem__(self, key):
         """
@@ -235,6 +234,7 @@ class BBoxFile:  # a collection of ImageBBoxes
                 #                "width": bbox[2],
                 #                "height": bbox[3]} for bbox in imagebbox.bbox_l] 
                 json_bbox_l = [{"label":"knob",
+                                "value": 1.0, # confidence for manually tagged bboxes is 100%
                                "x": bbox.x,
                                 "y": bbox.y,
                                 "width": bbox.w,

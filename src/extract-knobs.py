@@ -22,7 +22,7 @@ def parse_arguments():
     
     parser.add_argument('-p', '--picklepath', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
     parser.add_argument('-o','--out_dir', type=Path, default=Path('../data/out-extractedknobs'), help='Output directory for extracted knob images')
-    parser.add_argument('orig_dir', type=Path, help='directory containing original image')
+    parser.add_argument('-i', '--image_dir', type=Path, help='directory containing original (un-resized, ./out-renamed) image')
     parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
     parser.add_argument('-x', '--extrawidth', type=int, default=20, help=f'extra bounding box width, in pixels, default={default_extra_width}')
     parser.add_argument('-y', '--extraheight', type=int, default=30, help=f'extra bounding box height, in pixels, default={default_extra_height}')
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     bbox_file = boundingboxfile.BBoxFile(args.picklepath)
 
     extract_knobs_all_images(bbox_file,
-                             args.orig_dir,
+                             args.image_dir,
                              args.out_dir,
                              value_thresh=args.value_thresh,
                              extra_width=args.extrawidth,
