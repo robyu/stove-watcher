@@ -17,15 +17,15 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract Knobs')
 
     default_thresh = 0.95
-    default_extra_width = 20
-    default_extra_height = 30
+    default_extra_width = 10
+    default_extra_height = 10
     
     parser.add_argument('-p', '--picklepath', type=Path, default=None, help='pickle file with bounding boxes (output of bbtagger.py)')
     parser.add_argument('-o','--out_dir', type=Path, default=Path('../data/out-extractedknobs'), help='Output directory for extracted knob images')
     parser.add_argument('-i', '--image_dir', type=Path, help='directory containing original (un-resized, ./out-renamed) image')
     parser.add_argument('-t', '--value_thresh', type=float, default=default_thresh, help=f'bounding box minimum value (default {default_thresh})')
-    parser.add_argument('-x', '--extrawidth', type=int, default=20, help=f'extra bounding box width, in pixels, default={default_extra_width}')
-    parser.add_argument('-y', '--extraheight', type=int, default=30, help=f'extra bounding box height, in pixels, default={default_extra_height}')
+    parser.add_argument('-x', '--extrawidth', type=int, default=default_extra_width, help=f'extra bounding box width, in pixels, default={default_extra_width}')
+    parser.add_argument('-y', '--extraheight', type=int, default=default_extra_height, help=f'extra bounding box height, in pixels, default={default_extra_height}')
 
     args = parser.parse_args()
 
@@ -152,8 +152,12 @@ def extract_knobs_all_images(bb_file,
 
     for bb_fname, ibb in bbox_file.images_d.items():
         print(f"resized image: {bb_fname}")
-        orig_img_fname = find_orig_img_fname(Path(bb_fname),
-                                             orig_dir)
+        try:
+            orig_img_fname = find_orig_img_fname(Path(bb_fname),
+                                                 orig_dir)
+        except:
+            print(f"could not original image {orig_img_fname}")
+            continue
         extract_knobs_single_image(ibb,
                                    orig_img_fname,
                                    out_dir,
@@ -167,8 +171,6 @@ def extract_knobs_all_images(bb_file,
     
 if __name__ == "__main__":
     args = parse_arguments()
-
-    assert args.picklepath.is_file()
 
     bbox_file = boundingboxfile.BBoxFile(args.picklepath)
 
