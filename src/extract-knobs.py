@@ -48,22 +48,40 @@ def adjust_bounding_box(bb,
                         orig_width,
                         orig_height,
                         ):
+    MARGIN = 5  # margin allows for wiggle room during side-length equalization below
+    max_side = max(bb.w, bb. h)
+    
+
     x0 = int(scalef * bb.x + h_offset - extra_width/2.0)
-    x0 = max(0, x0)
+    x0 = max(MARGIN, x0)
+    x1 = x0 + int(scalef * max_side) + extra_width
+    x1 = min(x1, orig_width-MARGIN)
 
     y0 = int(scalef * bb.y - extra_height/2.0)
-    y0 = max(0, y0)
+    y0 = max(MARGIN, y0)
+    y1 = y0 + int(scalef * max_side) + extra_height
+    y1 = min(y1, orig_height-MARGIN)
 
-    x1 = x0 + int(scalef * bb.w) + extra_width
-    x1 = min(x1, orig_width)
-    
-    y1 = y0 + int(scalef * bb.h) + extra_height
-    y1 = min(y1, orig_height)
-    return x0, y0, x1, y1
-        
-# def make_knob_fname(out_dir, orig_img_fname, n):
-#     out_fname = out_dir / f"{orig_img_fname.stem}-b{n:02d}.png"
-#     return out_fname
+    #
+    # weirdness: iterate until the sides have the same length
+    delta_x = x1 - x0
+    delta_y = y1 - y0
+    while delta_x != delta_y:
+        if delta_x > delta_y:
+            # increase delta_y
+            diff = delta_x - delta_y
+            y0 -= int(diff/2.0)
+            y1 += diff - int(diff/2.0)
+        else:
+            # increase delta_x
+            diff = delta_y - delta_x
+            x0 -= int(diff/2.0)
+            x1 += diff - int(diff/2.0)
+        #
+        delta_x = x1 - x0
+        delta_y = y1 - y0
+    #
+    return x0, y0, x1, y1    
 
 def extract_knobs_single_image(ibb, # imageBBox object
                                orig_img_fname,

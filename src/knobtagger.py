@@ -5,15 +5,16 @@ import numpy as np
 import argparse
 import scipy.stats as stats
 from dataclasses import dataclass
-
+import sys
+import shutil
 
 class ImageStats:
     def __init__(self):
         self.peak_index = -1
         self.peak_val = float('-inf')
         self.mean_val= float('-inf')
-        self.peak_metric = float('inf')
-        self.sym_metric = 0.0
+        self.peak_metric = float('-inf')
+        self.sym_metric = float('-inf')
 
     def __str__(self):
         s = f"peak index={self.peak_index} peak_val={self.peak_val} mean_val={self.mean_val} peak_metric={self.peak_metric} sym_metric={self.sym_metric}"
@@ -95,16 +96,16 @@ def calc_symmetry_metric(x):
     #
     assert len(x) % 2==1  # odd length window
     mid = int(len(x)/2)
-    xleft = x[0:mid+1]; print(len(xleft))
+    xleft = x[0:mid+1]
     meanleft = np.mean(xleft)
 
-    xright = x[mid:];print(len(xright))
+    xright = x[mid:]
     meanright = np.mean(xright)
 
     assert len(xright)==len(xleft)
 
     diff = meanright - meanleft
-    print(f"meanleft={meanleft}, {meanright}, diff={meanright - meanleft}")
+    #print(f"meanleft={meanleft}, {meanright}, diff={meanright - meanleft}")
     return diff
 
 def calc_peakiness_metric(x):
@@ -175,14 +176,98 @@ def knob_is_off(sum_x, sum_y):
 #         fname = str(image_path)
 #     #
 #     print(f"{fname:15s} {knob_stats.peak_index:4d} {knob_stats.peak_value:4.3f} {knob_stats.mean_val:4.3f} {str(is_off):6s}")
+
+def find_img_files(image_dir):
+    """
+    return list of img files
+    """
+    assert image_dir.is_dir()
+    png_files = list(image_dir.glob('*-b[0-9][0-9].png'))
+    img_l = sorted(png_files)
+    return img_l
+
+
+def print_header():
+    s  = f"| {'filename':30s} "
+    s += f"| {'PI':4s} "
+    s += f"| {'PDelta':8s} "
+    s += f"| {'peakM':8s} "
+    s += f"| {'symm':8s} "
+    s += f"| {'stove_state':12s} |"
+    print(s)
     
+def print_img_summary(img_fname, knob_stats, is_off):
+    def float_or_inf(f):
+        if f==float('-inf'):
+            s = 8 * ' '
+        else:
+            s = f"{f:8.3f}"
+        return s
+        
+    s =  f"| {str(img_fname)[-30:]:30s} "
+    s += f"| {knob_stats.peak_index:4d} " 
+    s += f"| {knob_stats.peak_val - knob_stats.mean_val:8.3f} " 
+    s += f"| {float_or_inf(knob_stats.peak_metric):8s} " 
+    s += f"| {float_or_inf(knob_stats.sym_metric):8s} " 
+    #s += f"| {str(is_off):8s} |"
+    stove_state = "stove off" if is_off else "STOVE ON"
+    s += f"| {stove_state:12s} |"
+    
+    print(s)
+
+def delete_dest_dir(image_path):
+    dest_path =  Path("../data/out-knobtagger")
+    if image_path.is_file():
+        dest_path = dest_path / image_path.parts[-3] / image_path.parts[-2]
+    else:
+        dest_path = dest_path / image_path.parts[-2] / image_path.parts[-1]
+    #
+    try:
+        shutil.rmtree(dest_path)
+    except FileNotFoundError:
+        pass
+    
+    
+def copy_file(img_fname, is_off):
+    """
+    copy file to either .../on/fname or .../off/fname
+    """
+    dest_path =  Path("../data/out-knobtagger")
+    dest_path = dest_path / img_fname.parts[-3] / img_fname.parts[-2]   # the last directory element
+    dest_on  = dest_path / "on" / img_fname.name
+    dest_off = dest_path / "off"  / img_fname.name
+
+    dest_on.parent.mkdir(exist_ok=True, parents=True)
+    dest_off.parent.mkdir(exist_ok=True, parents=True)
+
+    if is_off:
+        shutil.copy(img_fname, dest_off)
+    else:
+        shutil.copy(img_fname, dest_on)
+    
+def classify_knobs(image_path):
+    if image_path.is_file():
+        files_l = [image_path]
+    else:
+        assert image_path.is_dir()
+        files_l = find_img_files(image_path)
+    #
+    delete_dest_dir(image_path)
+    print_header()
+    for img_fname in files_l:
+        img_bw, sum_x, sum_y = calc_image_cumulants(img_fname)
+        is_off, knob_stats = knob_is_off(sum_x, sum_y)
+
+        print_img_summary(img_fname, knob_stats, is_off)
+
+        if args.plot:
+            plot_stats(img_fname, img_bw, sum_x, sum_y)
+        #
+        copy_file(img_fname, is_off)
+    #
+
     
 if __name__=="__main__":
     args = parse_args()
-    img_bw, sum_x, sum_y = calc_image_cumulants(args.image_path)
-    is_off, knob_stats = knob_is_off(sum_x, sum_y)
-    print(str(knob_stats))
-    #print_report(args.image_path, is_off, stats)
-    if args.plot:
-        plot_stats(args.image_path, img_bw, sum_x, sum_y)
+    classify_knobs(args.image_path)
     
