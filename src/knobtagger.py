@@ -7,6 +7,38 @@ import scipy.stats as stats
 from dataclasses import dataclass
 import sys
 import shutil
+import math
+
+class StatsLogger:
+    def __init__(self):
+        self.samples = []
+
+    def log(self, x):
+        if math.isinf(x)==False:
+            self.samples.append(x)
+
+    def get_stats(self, title='statistics'):
+        histogram, bins = np.histogram(self.samples)
+        mean = np.mean(self.samples)
+        std = np.std(self.samples)
+        # plt.hist(self.samples, bins='auto')
+        # plt.xlabel('Values')
+        # plt.ylabel('Frequency')
+        # plt.title('Histogram of X Values')
+        # plt.show()
+
+        plt.bar(bins[:-1], histogram, width=np.diff(bins), align='edge')
+        plt.axvline(mean, color='r', linestyle='--', label=f'{mean:6.2f}')
+        plt.axvline(mean + std, color='g', linestyle='--', label=f'mean + {std:6.2f} = {mean + std:6.2f}')
+        plt.axvline(mean - std, color='g', linestyle='--', label=f'mean - {std:6.2f} = {mean - std:6.2f}')
+        
+        plt.xlabel('Bins')
+        plt.ylabel('Frequency')
+        plt.title(f'Histogram {title}')
+        plt.legend()
+        plt.show()
+        return histogram, mean, std
+
 
 class ImageStats:
     def __init__(self):
@@ -22,9 +54,25 @@ class ImageStats:
         
 
 def parse_args():
+    DEFAULT_PEAK_DELTA=50
+    DEFAULT_PEAK_METRIC=50.0
+    DEFAULT_SKEW_METRIC=0.0
     parser = argparse.ArgumentParser()
     parser.add_argument("image_path", type=Path, help="path to image")
-    parser.add_argument("-p", "--plot", action="store_true", default=False, help="plot stuff")
+    parser.add_argument("-d", "--disp", action="store_true", default=False, help="display/plot stuff")
+    parser.add_argument("-p", "--peak_delta_thresh",
+                        type=float,
+                        default=DEFAULT_PEAK_DELTA,
+                        help="peak delta threshold; default {DEFAULT_PEAK_DELTA}")
+    parser.add_argument("-r", "--pmetric_thresh",
+                        type=float,
+                        default=DEFAULT_PEAK_METRIC,
+                        help="peakiness metric threshold; default {DEFAULT_PEAK_METRIC}")
+    parser.add_argument("-s", "--skew_thresh",
+                        type=float,
+                        default=DEFAULT_PEAK_METRIC,
+                        help="peakiness metric threshold; default {DEFAULT_PEAK_METRIC}")
+
     return parser.parse_args()
 
 def calc_image_cumulants(img_name):
@@ -126,24 +174,26 @@ def find_peak_index(x, start_index, stop_index):
     mean_val = np.mean(x[start_index:stop_index])
     return max_indx, max_val, mean_val
 
-def is_valid_peak(indx, max_val, mean_val):
+def is_valid_peak(indx, max_val, mean_val, thresh):
     if indx < 20 or indx > 80:
         return False
-    if max_val - mean_val < 50:
+    if max_val - mean_val < thresh:
         return False
     else:
         return True
 
-def knob_is_off(sum_x, sum_y):
-    THRESH_PEAKINESS_METRIC = 50.0
-    THRESH_SYMMETRY_METRIC = 0.0
+def knob_is_off(sum_x, sum_y, peak_delta_thresh, pmetric_thresh, skew_thresh):
     
     knob_stats = ImageStats()
     knob_stats.peak_index, knob_stats.peak_val, knob_stats.mean_val = find_peak_index(sum_y, 20, 80)
 
     #
     # there's a definite peak
-    if is_valid_peak(knob_stats.peak_index, knob_stats.peak_val, knob_stats.mean_val)==False:
+    valid_flag = is_valid_peak(knob_stats.peak_index,
+                               knob_stats.peak_val,
+                               knob_stats.mean_val,
+                               peak_delta_thresh)
+    if valid_flag==False:
         return False, knob_stats
 
     # extract window
@@ -157,13 +207,14 @@ def knob_is_off(sum_x, sum_y):
     
     # the peak is peaky
     knob_stats.peak_metric = calc_peakiness_metric(win)
-    if knob_stats.peak_metric > THRESH_PEAKINESS_METRIC:
+    knob_stats.sym_metric = calc_symmetry_metric(win)
+
+    if knob_stats.peak_metric > pmetric_thresh:
         return False, knob_stats
     #
 
     # the peak is skewed right
-    knob_stats.sym_metric = calc_symmetry_metric(win)
-    if knob_stats.sym_metric < THRESH_SYMMETRY_METRIC:
+    if knob_stats.sym_metric < skew_thresh:
         return False, knob_stats
 
     return True, knob_stats
@@ -210,7 +261,7 @@ def print_img_summary(img_fname, knob_stats, is_off):
     s += f"| {float_or_inf(knob_stats.peak_metric):8s} " 
     s += f"| {float_or_inf(knob_stats.sym_metric):8s} " 
     #s += f"| {str(is_off):8s} |"
-    stove_state = "stove off" if is_off else "STOVE ON"
+    stove_state = "off" if is_off else "STOVE ON"
     s += f"| {stove_state:12s} |"
     
     print(s)
@@ -244,30 +295,63 @@ def copy_file(img_fname, is_off):
         shutil.copy(img_fname, dest_off)
     else:
         shutil.copy(img_fname, dest_on)
+
+def collect_stats(knob_stats, log_peak_diff, log_peakiness, log_symmetry):
+    log_peak_diff.log(knob_stats.peak_val - knob_stats.mean_val)
+    log_peakiness.log(knob_stats.peak_metric)
+    log_symmetry.log(knob_stats.sym_metric)
+    return log_peak_diff, log_peakiness, log_symmetry
     
-def classify_knobs(image_path):
+        
+def classify_knobs(image_path,
+                   peak_delta_thresh,
+                   pmetric_thresh,
+                   skew_thresh):
     if image_path.is_file():
         files_l = [image_path]
     else:
         assert image_path.is_dir()
         files_l = find_img_files(image_path)
     #
+
+    log_peak_diff = StatsLogger()
+    log_peakiness = StatsLogger()
+    log_symmetry = StatsLogger()
+    
     delete_dest_dir(image_path)
     print_header()
     for img_fname in files_l:
         img_bw, sum_x, sum_y = calc_image_cumulants(img_fname)
-        is_off, knob_stats = knob_is_off(sum_x, sum_y)
+        is_off, knob_stats = knob_is_off(sum_x,
+                                         sum_y,
+                                         peak_delta_thresh,
+                                         pmetric_thresh,
+                                         skew_thresh)
 
         print_img_summary(img_fname, knob_stats, is_off)
 
-        if args.plot:
+        if args.disp:
             plot_stats(img_fname, img_bw, sum_x, sum_y)
         #
         copy_file(img_fname, is_off)
+
+        log_peak_diff, log_peakiness, log_symmetry = collect_stats(knob_stats,
+                                                                   log_peak_diff,
+                                                                   log_peakiness,
+                                                                   log_symmetry)
+    #
+
+    if len(files_l) > 1:
+        log_peak_diff.get_stats(title='peak diff')
+        log_peakiness.get_stats(title='peakiness')
+        log_symmetry.get_stats(title='symmetry')
     #
 
     
 if __name__=="__main__":
     args = parse_args()
-    classify_knobs(args.image_path)
+    classify_knobs(args.image_path,
+                   args.peak_delta_thresh,
+                   args.pmetric_thresh,
+                   args.skew_thresh)
     
