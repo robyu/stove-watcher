@@ -56,22 +56,22 @@ class ImageStats:
 def parse_args():
     DEFAULT_PEAK_DELTA=50
     DEFAULT_PEAK_METRIC=50.0
-    DEFAULT_SKEW_METRIC=0.0
+    DEFAULT_SKEW_METRIC=20.0
     parser = argparse.ArgumentParser()
     parser.add_argument("image_path", type=Path, help="path to image")
     parser.add_argument("-d", "--disp", action="store_true", default=False, help="display/plot stuff")
-    parser.add_argument("-p", "--peak_delta_thresh",
+    parser.add_argument("-q", "--peak_delta_thresh",
                         type=float,
                         default=DEFAULT_PEAK_DELTA,
-                        help="peak delta threshold; default {DEFAULT_PEAK_DELTA}")
+                        help=f"peak delta threshold; default {DEFAULT_PEAK_DELTA}")
     parser.add_argument("-r", "--pmetric_thresh",
                         type=float,
                         default=DEFAULT_PEAK_METRIC,
-                        help="peakiness metric threshold; default {DEFAULT_PEAK_METRIC}")
+                        help=f"peakiness metric threshold; default {DEFAULT_PEAK_METRIC}")
     parser.add_argument("-s", "--skew_thresh",
                         type=float,
-                        default=DEFAULT_PEAK_METRIC,
-                        help="peakiness metric threshold; default {DEFAULT_PEAK_METRIC}")
+                        default=DEFAULT_SKEW_METRIC,
+                        help=f"peakiness metric threshold; default {DEFAULT_SKEW_METRIC}")
 
     return parser.parse_args()
 
