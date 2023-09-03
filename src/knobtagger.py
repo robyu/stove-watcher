@@ -72,7 +72,12 @@ def parse_args():
                         type=float,
                         default=DEFAULT_SKEW_METRIC,
                         help=f"peakiness metric threshold; default {DEFAULT_SKEW_METRIC}")
-
+    parser.add_argument("--all_off",
+                        action="store_true",
+                        default=
+                        False,
+                        help="override: classify all images as OFF")
+                        
     return parser.parse_args()
 
 def calc_image_cumulants(img_name):
@@ -306,7 +311,8 @@ def collect_stats(knob_stats, log_peak_diff, log_peakiness, log_symmetry):
 def classify_knobs(image_path,
                    peak_delta_thresh,
                    pmetric_thresh,
-                   skew_thresh):
+                   skew_thresh,
+                   all_off_flag=False):
     if image_path.is_file():
         files_l = [image_path]
     else:
@@ -327,6 +333,10 @@ def classify_knobs(image_path,
                                          peak_delta_thresh,
                                          pmetric_thresh,
                                          skew_thresh)
+        if all_off_flag==True:
+            #override automatic classification
+            is_off=True
+        #
 
         print_img_summary(img_fname, knob_stats, is_off)
 
@@ -341,7 +351,7 @@ def classify_knobs(image_path,
                                                                    log_symmetry)
     #
 
-    if len(files_l) > 1:
+    if len(files_l) > 1 and args.disp:
         log_peak_diff.get_stats(title='peak diff')
         log_peakiness.get_stats(title='peakiness')
         log_symmetry.get_stats(title='symmetry')
@@ -353,5 +363,6 @@ if __name__=="__main__":
     classify_knobs(args.image_path,
                    args.peak_delta_thresh,
                    args.pmetric_thresh,
-                   args.skew_thresh)
+                   args.skew_thresh,
+                   all_off_flag= args.all_off)
     

@@ -3,6 +3,8 @@ OUTDIR=../data/out-extract-knobs/ei
 PICKLEDIR=../data/out-find-knobs
 SRCDIR=../data/out-renamed
 
+
+rm -rf "$OUTDIR"
 #
 # extract knob images from hand-tagged images
 python extract-knobs.py -x 26 -y 26 -o "$OUTDIR/general"      -p "$PICKLEDIR/general"      -i "$SRCDIR/general"
