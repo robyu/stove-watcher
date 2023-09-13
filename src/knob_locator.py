@@ -6,7 +6,7 @@ from edge_impulse_linux.image import ImageImpulseRunner
 from pathlib import Path
 import boundingboxfile
 
-class KnobId:
+class KnobLocator:
     def __init__(self, eim_fname):
         self.eim_path = Path(eim_fname)
         assert self.eim_path.exists()

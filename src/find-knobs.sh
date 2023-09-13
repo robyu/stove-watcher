@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODELFILE=../modelfiles/knobhead-r8.eim
+MODELFILE=../modelfiles/knobhead-r08.eim
 
 #
 # run NN model to find knobs

@@ -5,7 +5,7 @@ import os
 import sys
 import numpy as np
 from edge_impulse_linux.image import ImageImpulseRunner
-import knobid
+import knob_locator
 import json
 import argparse
 import helplib
@@ -14,7 +14,7 @@ import re
 import boundingboxfile
 
 """
-standalone interface to knobid.py
+standalone interface to knob_locator.py
 process image files to locate knobs
 
 read pickle.rect file (or create a new one)
@@ -90,7 +90,7 @@ def mark_test_boxes(img_rgb):
 def classify_image(image_path, modelfile, bbox_file, mark_corners_flag=False):
     assert image_path.exists()
     
-    kid = knobid.KnobId(modelfile)
+    kid = knob_locator.KnobLocator(modelfile)
     img_rgb = helplib.read_image_rgb(image_path)
     marked_img = np.copy(img_rgb)
 
