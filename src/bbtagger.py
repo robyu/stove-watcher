@@ -254,7 +254,7 @@ if __name__=="__main__":
     if args.delete==True:
         assert args.cmd != "audit"
         assert args.cmd != "writejson"
-        pickle_path = boundingboxfile.make_pickle_path(args.pickle_path)
+        pickle_path = boundingboxfile.BBoxFile.make_pickle_path(args.pickle_path)
         if pickle_path.is_file():
             os.remove(pickle_path)
     #

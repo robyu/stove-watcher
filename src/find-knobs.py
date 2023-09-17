@@ -133,7 +133,7 @@ def classify_dir_images(input_path, modelfile, bbox_file):
 def init_bbox_file(out_path,
                    delete_flag):
     if delete_flag:
-        pickle_path = boundingboxfile.make_pickle_path(out_path)
+        pickle_path = boundingboxfile.BBoxFile.make_pickle_path(out_path)
         if pickle_path.is_file():
             os.remove(pickle_path)
         #

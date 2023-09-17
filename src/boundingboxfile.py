@@ -24,6 +24,9 @@ class BBox:
             
 
 class ImageBBoxes:
+    """
+    an object representing an image path and its corresponding bounding boxes
+    """
     def __init__(self, image_path, width, height):
         assert isinstance(image_path, Path)
         self.image_path = image_path
@@ -32,7 +35,7 @@ class ImageBBoxes:
         self.bbox_l = []   # list of BBoxes
 
     def __str__(self):
-        import pudb; pudb.set_trace()
+        #import pudb; pudb.set_trace()
         s = f"image_path={str(self.image_path)}, width={self.image_width}, height={self.image_height})"
         for bbox in self.bbox_l:
             s += f"\n{str(bbox)}"
@@ -52,7 +55,10 @@ class ImageBBoxes:
     def __iter__(self):
         """
         this will let me use ImageBBoxes as an iterator
-        to iterate through bboxes
+        to iterate through bboxes, e.g.
+
+        for bbox in image_bboxes:
+            print(bbox)
         """
         return iter(self.bbox_l)
 
@@ -132,16 +138,7 @@ class ImageBBoxes:
 
         
 
-def make_pickle_path(image_path):
-    if image_path.is_dir():
-        bb_path = image_path
-    else:
-        bb_path = image_path.parent
-    #
-    assert bb_path.is_dir()
 
-    pickle_path = bb_path / "rects.pickle"
-    return pickle_path
 
 def mark_bb_on_img(img, bb):
     cv2.rectangle(img,
@@ -151,7 +148,11 @@ def mark_bb_on_img(img, bb):
                   (0, 255, 0), 3)
     
     
-class BBoxFile:  # a collection of ImageBBoxes
+class BBoxFile:  
+    """
+    a collection of Images and their associated bounding boxes, 
+    stored as a pickle file
+    """
     def __init__(self, pickle_dir):
         self.pickle_path = make_pickle_path(pickle_dir)
         print(f"pickle path is {self.pickle_path}...", end='')
@@ -167,6 +168,18 @@ class BBoxFile:  # a collection of ImageBBoxes
         else:
             print("loaded")
         #
+
+    @staticmethod
+    def make_pickle_path(file_path):
+        if file_path.is_dir():
+            bb_path = image_path
+        else:
+            bb_path = image_path.parent
+        #
+        assert bb_path.is_dir()
+
+        pickle_path = bb_path / "rects.pickle"
+        return pickle_path
 
     def __str__(self):
         s = f"pickle path: {self.pickle_path}\n"

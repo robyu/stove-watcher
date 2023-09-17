@@ -15,12 +15,18 @@ import knob_classifier
 
 class TestKnobClassifier(unittest.TestCase):
     knob_off_path = Path('./data/out-knobtagger/bbtagger/general/off/bbt-general-0000-b00.png')
-    model_path = Path('./modelfiles/macos/itsagas-r01.eim')
-    
+
+    # pick the correct model for your platform
+    if os.uname().sysname == 'Linux':   
+        model_path = Path('./modelfiles/linux-x86-64/itsagas-r01.eim')
+    elif os.uname().sysname == 'Darwin':
+        model_path = Path('./modelfiles/macos/itsagas-r01.eim')
+    else:
+        assert False, f"unknown platform {os.uname().sysname}"
+    assert model_path.exists(), f"model_path {model_path} does not exist"
 
     def setUp(self):
-        print('setup')
-
+        pass
 
     def tearDown(self):
         print('teardown')
