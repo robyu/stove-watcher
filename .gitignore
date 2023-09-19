@@ -21,7 +21,8 @@ data-from-ei/.ipynb_checkpoints
 *.npy
 *.json
 tests/data/*.pickle
-
+tests/out/*.png
+tests/out/*.jpg
 
 
 

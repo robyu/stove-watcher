@@ -23,6 +23,7 @@ class BBox:
         return s
             
 
+
 class ImageBBoxes:
     """
     an object representing an image path and its corresponding bounding boxes
@@ -139,7 +140,7 @@ class ImageBBoxes:
         
 
 
-
+# TODO: move to helplib
 def mark_bb_on_img(img, bb):
     cv2.rectangle(img,
                   (bb.x, bb.y),

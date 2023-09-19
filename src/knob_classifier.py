@@ -2,6 +2,8 @@ from edge_impulse_linux.image import ImageImpulseRunner
 
 
 class KnobClassifier:
+
+    
     def __init__(self, model_path):
         self.runner = ImageImpulseRunner(str(model_path))
         model_info = self.runner.init()
@@ -10,7 +12,7 @@ class KnobClassifier:
     def __del__(self):
         self.runner.stop()
 
-    def knob_is_on(self, res, thresh = 0.95):
+    def _knob_is_on(self, res, thresh = 0.95):
         off_score = res['result']['classification']['off']
         on_score = res['result']['classification']['on']
         print(f"off_score: {off_score} | on_score: {on_score}")
@@ -21,9 +23,11 @@ class KnobClassifier:
             return False
 
     def is_on(self, img_rgb):
+        assert img_rgb.shape[0] == img_rgb.shape[1], f"image is not square: {img_rgb.shape}"
         features, img_out = self.runner.get_features_from_image(img_rgb)
+
         res = self.runner.classify(features)
-        return self.knob_is_on(res)
+        return self._knob_is_on(res)
     
     def __del__(self):
         self.runner.stop()

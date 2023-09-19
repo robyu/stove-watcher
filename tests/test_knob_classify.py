@@ -65,6 +65,7 @@ class TestKnobClassifier(unittest.TestCase):
         self.assertFalse(is_on)
 
     def test_knob_classification(self):
+        #import pudb; pudb.set_trace()
         print(f"model: {self.model_path}")
         print(f"image: {self.knob_off_path}")
         kc = knob_classifier.KnobClassifier(self.model_path)
