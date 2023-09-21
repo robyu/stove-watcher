@@ -99,3 +99,13 @@ def adjust_bbox_coords(bb,
     #
     return x0, y0, x1, y1    
     
+def extract_knob_image(img, x0, y0, x1, y1):
+    knob_img = img[y0:y1, x0:x1,:]
+    return knob_img
+
+def draw_box(img, x0, y0, x1, y1):
+    cv2.rectangle(img,
+                  (x0, y0),
+                  (x1, y1),
+                  (0, 255, 0), 2)
+    return img

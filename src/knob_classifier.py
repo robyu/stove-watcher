@@ -4,20 +4,22 @@ from edge_impulse_linux.image import ImageImpulseRunner
 class KnobClassifier:
 
     
-    def __init__(self, model_path):
+    def __init__(self, model_path, thresh = 0.9):
         self.runner = ImageImpulseRunner(str(model_path))
         model_info = self.runner.init()
         print('Loaded runner for "' + model_info['project']['owner'] + ' / ' + model_info['project']['name'] + '"')
 
+        self.thresh = thresh
+
     def __del__(self):
         self.runner.stop()
 
-    def _knob_is_on(self, res, thresh = 0.95):
+    def _knob_is_on(self, res):
         off_score = res['result']['classification']['off']
         on_score = res['result']['classification']['on']
-        print(f"off_score: {off_score} | on_score: {on_score}")
+        print(f"off_score: {off_score:5.3f} | on_score: {on_score:5.3f}")
         assert off_score + on_score > 0.99, f"off_score + on_score = {off_score + on_score} < 0.99"
-        if on_score > thresh:
+        if on_score > self.thresh:
             return True
         else:
             return False

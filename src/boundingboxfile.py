@@ -22,7 +22,23 @@ class BBox:
         s = f"x:{self.x} y:{self.y} w:{self.w} h:{self.h} value={self.value} label={self.label}"
         return s
             
+    # allow me to access self.x1 and have the object automatically calculate self.x + self.w
+    @property
+    def x0(self):
+        return self.x
 
+    @property
+    def x1(self):
+        return self.x + self.w
+    
+    @property
+    def y0(self):
+        return self.y
+    
+    @property
+    def y1(self):
+        return self.y + self.h
+    
 
 class ImageBBoxes:
     """

@@ -31,14 +31,14 @@ def parse_arguments():
 
     return args
 
-def draw_box(img, x0, y0, x1, y1):
-    cv2.rectangle(img,
-                  (x0, y0),
-                  (x1, y1),
-                  (0, 255, 0), 2)
+# def draw_box(img, x0, y0, x1, y1):
+#     cv2.rectangle(img,
+#                   (x0, y0),
+#                   (x1, y1),
+#                   (0, 255, 0), 2)
 
-    #cv2.rectangle(img, (500, 500), (700, 700), (0, 255, 0), 10)
-    return img
+#     #cv2.rectangle(img, (500, 500), (700, 700), (0, 255, 0), 10)
+#     return img
 
 #MOVE THIS TO BOUNDINGBOX
 # def adjust_bounding_box(bb,
@@ -111,16 +111,17 @@ def extract_knobs_single_image(ibb, # imageBBox object
             continue
         #
         
-        x0, y0, x1, y1 = helplib.adjust_bounding_box(bb,
-                                             scalef,
-                                             h_offset,
-                                             extra_width,
-                                             extra_height,
-                                             orig_img_rgb.shape[1], # orig width
-                                             orig_img_rgb.shape[0]) # orig height
+        x0, y0, x1, y1 = helplib.adjust_bbox_coords(bb,
+                                                    scalef,
+                                                    h_offset,
+                                                    extra_width,
+                                                    extra_height,
+                                                    orig_img_rgb.shape[1], # orig width
+                                                    orig_img_rgb.shape[0]) # orig height
         #
         # extract knob image
-        knob_img = orig_img_rgb[y0:y1, x0:x1]
+        knob_imb = helplib.extract_knob_image(img, x0, y0, x1, y1)
+
         # knob_fname = make_knob_fname(out_dir,
         #                              orig_img_fname,
         #                              n)
@@ -129,8 +130,8 @@ def extract_knobs_single_image(ibb, # imageBBox object
 
         #
         # mark up image
-        marked_img = draw_box(marked_img,
-                                   x0, y0, x1, y1)
+        marked_img = helplib.draw_box(marked_img,
+                                      x0, y0, x1, y1)
         # increment only if valid threshold
         n += 1
     #
