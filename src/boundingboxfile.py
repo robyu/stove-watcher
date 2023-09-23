@@ -171,7 +171,7 @@ class BBoxFile:
     stored as a pickle file
     """
     def __init__(self, pickle_dir):
-        self.pickle_path = make_pickle_path(pickle_dir)
+        self.pickle_path = BBoxFile.make_pickle_path(pickle_dir)
         print(f"pickle path is {self.pickle_path}...", end='')
 
         # images_d is associative array: {image filename: image stats & list of bounding boxes}
@@ -189,9 +189,9 @@ class BBoxFile:
     @staticmethod
     def make_pickle_path(file_path):
         if file_path.is_dir():
-            bb_path = image_path
+            bb_path = file_path
         else:
-            bb_path = image_path.parent
+            bb_path = file_path.parent
         #
         assert bb_path.is_dir()
 
