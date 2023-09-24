@@ -50,28 +50,25 @@ class TestKnobClassifier(unittest.TestCase):
         runner = ImageImpulseRunner(str(self.model_path))
         model_info = runner.init()
         print('Loaded runner for "' + model_info['project']['owner'] + ' / ' + model_info['project']['name'] + '"')
-
         
         # get image
         img_rgb = helplib.read_image_rgb(self.knob_off_path)
-
-        #
         features, img_out = runner.get_features_from_image(img_rgb)
 
         res = runner.classify(features)
         runner.stop() 
-        is_on = self.knob_is_on(res)
-
+        is_on = TestKnobClassifier.knob_is_on(res)
         self.assertFalse(is_on)
 
     def test_knob_classification(self):
-        #import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         print(f"model: {self.model_path}")
         print(f"image: {self.knob_off_path}")
         kc = knob_classifier.KnobClassifier(self.model_path)
         img_rgb = helplib.read_image_rgb(self.knob_off_path)
-        is_on = kc.is_on(img_rgb)
-        self.assertFalse(is_on)
+        res = kc.classify(img_rgb)
+        self.assertTrue(res.knobclass==knob_classifier.KnobClass.OFF)
+
 
 
         

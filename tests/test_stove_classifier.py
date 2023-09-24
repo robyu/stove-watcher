@@ -33,7 +33,7 @@ class TestStoveClassifier(unittest.TestCase):
         print("teardown")
 
     def test_stove_classifier(self):
-        import pudb; pudb.set_trace()
+        #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = Path('./tests/out/'))
         stove_is_on = sc.classify_image(self.knobs_path, write_img_flag=True)
         self.assertTrue(stove_is_on==True)

@@ -6,7 +6,7 @@ sys.path.insert(0, './src')
 import stove_state
 
 class test_stove_state(unittest.TestCase):
-    import pudb; pudb.set_trace()
+    #import pudb; pudb.set_trace()
 
     def setup():
         pass

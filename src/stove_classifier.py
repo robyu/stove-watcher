@@ -128,14 +128,28 @@ class StoveClassifier:
         """
         stove_is_on = False
         for n, coord in enumerate(adjusted_box_coords_l):
-            knob_img = helplib.extract_knob_image(img, *coord)  # *coord is unpacking the tuple
-            knob_is_on = self.kc.is_on(knob_img)
-            print(f"knob {n} is {knob_is_on}")
-            if knob_is_on:
+            knob_img= helplib.extract_knob_image(img, *coord)  # *coord is unpacking the tuple
+            knob_result = self.kc.classify(knob_img)
+            print(f"knob {n} coords: {coord}")
+            if knob_result.knobclass == knob_classifier.KnobClass.ON:
+                print(f"knob {n} is ON (value = {knob_result.on_score}")
                 stove_is_on = stove_is_on or True
+            elif knob_result.knobclass == knob_classifier.KnobClass.OFF:
+                print(f"knob {n} is OFF (value = {knob_result.off_score}")
+            else:
+                print(f"knob {n} is INDETERMINATE (on_score = {knob_result.on_score}, off_score = {knob_result.off_score})")
+
+                # if indeterminate, then write the WHOLE STOVE'S image to rejects
+                reject_fname = self.reject_path / f"{img_path.stem}-indeterminate.png"
+                helplib.write_image(reject_fname, img)
+
+                # also write the knob image to rejects
+                reject_fname = self.reject_path / f"{img_path.stem}-knob-{n:02d}-indeterminate-knob.png"
+                helplib.write_image(reject_fname, knob_img)
             #
+                
             if write_img_flag:
-                fname = self.debug_out_path / f"{img_path.stem}-knob-{n:02d}-{str(knob_is_on)}.png"
+                fname = self.debug_out_path / f"{img_path.stem}-knob-{n:02d}.png"
                 helplib.write_image(fname, knob_img)
                 print(f"wrote {fname}")
             #
