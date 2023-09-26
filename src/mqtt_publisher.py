@@ -18,7 +18,7 @@ class MqttPublisher:
         self.broker_port = broker_port
         self.test_client = test_client
 
-    def publish_message(self, topic, message):
+    def publish(self, topic, message):
         if self.test_client:
             client = self.test_client
         else:

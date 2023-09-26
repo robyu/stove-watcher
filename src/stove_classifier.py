@@ -53,7 +53,7 @@ class StoveClassifier:
         #
         helplib.write_image(self.debug_out_path / fname, img_copy)
 
-    def classify_image(self, img_path, write_img_flag=False):
+    def stove_is_on(self, img_path, write_img_flag=False):
         assert img_path.exists()
         img_orig = helplib.read_image_rgb(img_path)
 

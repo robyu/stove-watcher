@@ -15,8 +15,6 @@ class TestMqttPublisher(unittest.TestCase):
         pass
 
     def test_send_message(self):
-
-
         # Use the mock library to patch the MQTT client
         with MagicMock() as mock_client:
             # Create an instance of MQTTModule
@@ -27,7 +25,7 @@ class TestMqttPublisher(unittest.TestCase):
             expected_message = 'Hello, MQTT!'
 
             # Call the method that sends the MQTT message
-            publisher.publish_message(expected_topic, expected_message)
+            publisher.publish(expected_topic, expected_message)
 
             # Assert that the MQTT client's publish() method was called with the expected arguments
             mock_client.publish.assert_called_once_with(expected_topic, expected_message)
