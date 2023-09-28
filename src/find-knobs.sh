@@ -1,6 +1,17 @@
 #!/bin/bash
 
-MODELFILE=../modelfiles/knobhead-r08.eim
+os=$(uname -s)
+
+if [ "$os" == "Linux" ]; then
+  echo "Linux"
+  MODELFILE=../modelfiles/linux-x86-64/knobhead-r08.eim
+elif [ "$os" == "Darwin" ]; then
+  echo "macOS"
+  MODELFILE=../modelfiles/macos/knobhead-r08.eim
+else
+    echo "Unknown"
+    exit 1
+fi
 
 #
 # run NN model to find knobs

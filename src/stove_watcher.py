@@ -43,8 +43,6 @@ class StoveWatcher:
     def _request_image(self):
         self.mqtt_pub.publish(MqttTopics.IC_CAPTURE_NOW, None)
 
-
-
     def run(self):
         while True:
             time.sleep(self.loop_interval_seconds)
@@ -53,8 +51,9 @@ class StoveWatcher:
             img_files_l = self.dirmon.get_new_files()
             for img_file in img_files_l:
                 stove_is_on = self.classifier.stove_is_on(img_file)
-                self._update_stove_state(stove_is_on)
+                self.stove_state.set_state(stove_is_on)
             #
+            self.stove_state.update()
         #
 
 
