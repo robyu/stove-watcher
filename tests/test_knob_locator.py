@@ -13,19 +13,19 @@ import knob_locator
 import boundingboxfile
 
 class TestKnobLocator(unittest.TestCase):
-    knobs_resized_path = Path('tests/in/out-resized/general/general-0026.png')
-    assert knobs_resized_path.exists(), f"{knobs_resized_path} does not exist"
+    KNOBS_RESIZED_PATH = Path('tests/in/out-resized/general/general-0026.png')
+    assert KNOBS_RESIZED_PATH.exists(), f"{KNOBS_RESIZED_PATH} does not exist"
 
-    knobs_path = Path('tests/in/out-renamed/general/general-0026.jpg')
-    assert knobs_path.exists(), f"{knobs_path} does not exist"
+    KNOBS_PATH = Path('tests/in/out-renamed/general/general-0026.jpg')
+    assert KNOBS_PATH.exists(), f"{KNOBS_PATH} does not exist"
 
     if os.uname().sysname == 'Linux':
-        model_path = Path('./modelfiles/linux-x86-64/knobhead-r08.eim')
+        MODEL_PATH = Path('./modelfiles/linux-x86-64/knobhead-r08.eim')
     elif os.uname().sysname == 'Darwin':
-        model_path = Path('./modelfiles/macos/knobhead-r08.eim')
+        MODEL_PATH = Path('./modelfiles/macos/knobhead-r08.eim')
     else:
         assert False, f"unknown platform {os.uname().sysname}"
-    assert model_path.exists(), f"model_path {model_path} does not exist"
+    assert MODEL_PATH.exists(), f"MODEL_PATH {MODEL_PATH} does not exist"
 
     def setUp(self):
         print("setup")
@@ -34,8 +34,8 @@ class TestKnobLocator(unittest.TestCase):
         print("teardown")
 
     def test_knob_locator(self):
-        kl = knob_locator.KnobLocator(self.model_path)
-        imgrgb = helplib.read_image_rgb(self.knobs_resized_path)
+        kl = knob_locator.KnobLocator(self.MODEL_PATH)
+        imgrgb = helplib.read_image_rgb(self.KNOBS_RESIZED_PATH)
         bb_l, img_out = kl.locate_knobs(imgrgb)
 
         out_path = Path('./tests/out/test_knob_locator.png')
@@ -50,8 +50,8 @@ class TestKnobLocator(unittest.TestCase):
         self.assertTrue(len(bb_l)==7)
 
     def test_knob_locator_with_resize(self):
-        kl = knob_locator.KnobLocator(self.model_path)
-        imgrgb = helplib.read_image_rgb(self.knobs_resized_path)
+        kl = knob_locator.KnobLocator(self.MODEL_PATH)
+        imgrgb = helplib.read_image_rgb(self.KNOBS_RESIZED_PATH)
         bb_l, img_out = kl.locate_knobs(imgrgb)
 
         out_path = Path('./tests/out/test_knob_locator_with_resize.png')
@@ -71,8 +71,8 @@ class TestKnobLocator(unittest.TestCase):
         helplib.write_image(out_path, img_out)
 
     def test_write_marked_image(self):
-        kl = knob_locator.KnobLocator(self.model_path)
-        imgrgb = helplib.read_image_rgb(self.knobs_resized_path)
+        kl = knob_locator.KnobLocator(self.MODEL_PATH)
+        imgrgb = helplib.read_image_rgb(self.KNOBS_RESIZED_PATH)
         bb_l, img_out = kl.locate_knobs(imgrgb)
 
         out_path = Path('./tests/out/test_write_marked_image.png')
@@ -80,9 +80,3 @@ class TestKnobLocator(unittest.TestCase):
             boundingboxfile.mark_bb_on_img(img_out, bb)
         helplib.write_image(out_path, img_out)
         self.assertTrue(out_path.exists())
-
-
-
-
-
-

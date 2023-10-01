@@ -9,6 +9,12 @@ sys.path.append('./src')
 import knob_classifier
 import knob_locator
 import helplib
+import enum
+
+class StoveClasses(enum.Enum):
+    ON = enum.auto()
+    OFF = enum.auto()
+    INDETERMINATE = enum.auto()
 
 class StoveClassifier:
     """
@@ -23,13 +29,13 @@ class StoveClassifier:
                    debug_out_path = None):
         self.kl = knob_locator.KnobLocator(locater_model_path)
         self.kc = knob_classifier.KnobClassifier(classifier_model_path, thresh = StoveClassifier.KNOB_CLASSIFIER_THRESHOLD)
-        self.reject_path = Path(reject_path)
+        self.reject_path = Path(reject_path).resolve()
         if reject_path.exists():
             assert reject_path.is_dir(), f"{reject_path} is not a directory"
         else:
             reject_path.mkdir(parents=True, exist_ok=True)
         #
-        self.debug_out_path = debug_out_path
+        self.debug_out_path = Path(debug_out_path).resolve()
         if self.debug_out_path:
             assert self.debug_out_path.exists()
             assert self.debug_out_path.is_dir()
@@ -39,21 +45,27 @@ class StoveClassifier:
         self.bb_l = []  
         self.adjusted_box_coords_l = []
 
-    def _write_knob_locator_out(self, img, bb_l, fname):
+    def _write_img_with_bboxes(self, img, bb_l, fname):
+        """
+        for debug: mark a copy of img with all bounding boxes, then
+        write to the debug_out_path
+        """
         img_copy = img.copy()
         for bb in bb_l:
             img_copy = helplib.draw_box(img_copy, bb.x0, bb.y0, bb.x1, bb.y1)
         #
+        img_fname = self.debug_out_path / fname
         helplib.write_image(self.debug_out_path / fname, img_copy)
+        print(f"wrote image with knobs to {img_fname}")
 
-    def _write_orig_img_with_bboxes(self, img, box_coords_l, fname):
+    def _write_img_with_bbox_coords(self, img, box_coords_l, fname):
         img_copy = img.copy()
         for box_coords in box_coords_l:
             img_copy = helplib.draw_box(img_copy, box_coords[0], box_coords[1], box_coords[2], box_coords[3])
         #
         helplib.write_image(self.debug_out_path / fname, img_copy)
 
-    def stove_is_on(self, img_path, write_img_flag=False):
+    def OLDstove_is_on(self, img_path, write_img_flag=False):
         assert img_path.exists()
         img_orig = helplib.read_image_rgb(img_path)
 
@@ -61,13 +73,13 @@ class StoveClassifier:
         kl_reject_flag = self._reject_stove_image(self.bb_l, img_orig, img_path)
 
         if write_img_flag:
-            self._write_knob_locator_out(img_kl, self.bb_l, "knob-locator-out.png")
+            self._write_img_with_bboxes(img_kl, self.bb_l, "knob-locator-out.png")
 
         if kl_reject_flag==False:
             # create list of bbox coords adjusted for the original image
             self.adjusted_box_coords_l = self._adjust_bbox_coords(self.bb_l, img_orig)
             if write_img_flag:
-                self._write_orig_img_with_bboxes(img_orig, self.adjusted_box_coords_l, "orig-img-with-bboxes.png")               
+                self._write_img_with_bbox_coords(img_orig, self.adjusted_box_coords_l, "orig-img-with-bboxes.png")               
             #
             stove_is_on = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path, write_img_flag)
         else:
@@ -76,6 +88,35 @@ class StoveClassifier:
         #
         print(f"stove {img_path}: stove_is_on = {stove_is_on}")
         return stove_is_on
+    
+    def classify(self, img_path, write_img_flag=False):
+        assert img_path.exists()
+        img_orig = helplib.read_image_rgb(img_path)
+
+        self.bb_l = []
+        self.adjusted_box_coords_l = []
+        stove_class = None
+
+        self.bb_l, img_kl = self.kl.locate_knobs(img_orig)
+        kl_reject_flag = self._reject_stove_image(self.bb_l, img_orig, img_path)
+
+        if write_img_flag:
+            self._write_img_with_bboxes(img_kl, self.bb_l, "knob-locator-out.png")
+
+        if kl_reject_flag==True:
+            stove_class = StoveClasses.INDETERMINATE
+        else:
+            # create list of bbox coords adjusted for the original image
+            self.adjusted_box_coords_l = self._adjust_bbox_coords(self.bb_l, img_orig)
+            if write_img_flag:
+                self._write_img_with_bbox_coords(img_orig, self.adjusted_box_coords_l, "orig-img-with-bboxes.png")               
+            #
+            stove_class = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path, write_img_flag)
+        #
+        print(f"stove {img_path}: stove_class = {stove_class}")
+
+        assert stove_class != None
+        return stove_class
     
     def _adjust_bbox_coords(self, bb_l, img):
         """
@@ -105,7 +146,13 @@ class StoveClassifier:
 
     def _reject_stove_image(self, bb_l, img, img_path):
         reject_flag = False
-        if len(bb_l) > StoveClassifier.MAX_NUM_KNOBS:
+        if len(bb_l) <= 0:
+            reject_fname = self.reject_path / f"{img_path.stem}-no-knobs.png"
+            helplib.write_image(reject_fname, img)
+            print(f"rejecting {img_path} because it has {len(bb_l)} knobs")
+            print(f"wrote to {reject_fname}")
+            reject_flag = True
+        elif len(bb_l) > StoveClassifier.MAX_NUM_KNOBS:
             # filename is reject_path + img_path stem + "too-many-knobs" + png
             reject_fname = self.reject_path / f"{img_path.stem}-too-many-knobs.png"
             helplib.write_image(reject_fname, img)
@@ -124,9 +171,9 @@ class StoveClassifier:
         write_img_flag:  if True, write image to debug_out_path
         
         OUT
-        stove_is_on: boolean
+        stove_class
         """
-        stove_is_on = False
+        stove_class = None
         for n, coord in enumerate(adjusted_box_coords_l):
             knob_img= helplib.extract_knob_image(img, *coord)  # *coord is unpacking the tuple
             knob_result = self.kc.classify(knob_img)
@@ -140,21 +187,29 @@ class StoveClassifier:
                 print(f"knob {n} is INDETERMINATE (on_score = {knob_result.on_score}, off_score = {knob_result.off_score})")
 
                 # if indeterminate, then write the WHOLE STOVE'S image to rejects
+                # write an unmarked image so that it's easier to process
                 reject_fname = self.reject_path / f"{img_path.stem}-indeterminate.png"
                 helplib.write_image(reject_fname, img)
 
                 # also write the knob image to rejects
-                reject_fname = self.reject_path / f"{img_path.stem}-knob-{n:02d}-indeterminate-knob.png"
+                reject_fname = self.reject_path / f"{img_path.stem}-knob-{n:02d}-indeterminate.png"
                 helplib.write_image(reject_fname, knob_img)
             #
                 
             if write_img_flag:
-                fname = self.debug_out_path / f"{img_path.stem}-knob-{n:02d}.png"
+                fname = self.debug_out_path / f"{img_path.stem}-knob-{n:02d}"
+                if knob_result.knobclass == knob_classifier.KnobClass.ON:
+                    fname = str(fname) + "-on.png"
+                elif knob_result.knobclass == knob_classifier.KnobClass.OFF:
+                    fname = str(fname) + "-off.png"
+                else:
+                    fname = str(fname) + "-indeterminate.png"
+
                 helplib.write_image(fname, knob_img)
                 print(f"wrote {fname}")
             #
 
-        return stove_is_on
+        return stove_class
 
 
 

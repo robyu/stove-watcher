@@ -13,17 +13,17 @@ class StoveStates(enum.Enum):
 
 
 class StoveState:
-    DEFAULT_PUBLISH_INTERVAL_SEC = 300
+    DEFAULT_ALERT_INTERVAL_SEC = 300
     def __init__(self, 
                  mqtt_pub,
-                 publish_interval_sec=DEFAULT_PUBLISH_INTERVAL_SEC  # set default value here
+                 alert_interval_sec=DEFAULT_ALERT_INTERVAL_SEC  # set default value here
                   ):
         # keep track of whether stove is on or off
         # if on, track for how long
         self.input_flag = False
         self.state = StoveStates.OFF
         self.countdown_sec = 0
-        self.publish_interval_sec = publish_interval_sec
+        self.alert_interval_sec = alert_interval_sec
         self.last_update_dt = None
 
         assert type(mqtt_pub) == mqtt_publisher.MqttPublisher
@@ -51,7 +51,7 @@ class StoveState:
         if self.state==StoveStates.OFF:
             if input_flag:
                 next_state = StoveStates.ON1
-                self.countdown_sec = self.publish_interval_sec
+                self.countdown_sec = self.alert_interval_sec
             else:
                 next_state = StoveStates.OFF
             #
@@ -61,9 +61,10 @@ class StoveState:
             else:
                 if self.countdown_sec <= 0:
                     next_state = StoveStates.ON2
-                    self.countdown_sec = self.publish_interval_sec
+                    self.countdown_sec = self.alert_interval_sec
                     self.mqtt_pub.publish(MqttTopics.STOVE_STATUS_ON_DURATION_MIN, 
-                                          int(self.publish_interval_sec/60.0))
+                                        int(self.alert_interval_sec/60.0))
+                    #
                 else:
                     # no nothing
                     next_state = StoveStates.ON1
@@ -76,9 +77,10 @@ class StoveState:
             else:
                 if self.countdown_sec <= 0:
                     next_state = StoveStates.ON2
-                    self.countdown_sec = self.publish_interval_sec
+                    self.countdown_sec = self.alert_interval_sec
                     self.mqtt_pub.publish(MqttTopics.STOVE_STATUS_ON_DURATION_MIN, 
-                                          int(self.publish_interval_sec/60.0))
+                                            int(self.alert_interval_sec/60.0))
+                    #
                 else:
                     # no nothing
                     next_state = StoveStates.ON2

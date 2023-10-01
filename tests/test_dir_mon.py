@@ -5,7 +5,7 @@ from src.dir_mon import DirMon
 
 class TestDirMon(unittest.TestCase):
     def setUp(self):
-        self.ftp_dir = Path('./tests/in/ftp_dir')
+        self.ftp_dir = Path('./tests/out/ftp_dir')
         if not self.ftp_dir.exists():
             self.ftp_dir.mkdir(parents=False, exist_ok=True)
         

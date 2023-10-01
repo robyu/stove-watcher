@@ -13,7 +13,7 @@ message = "stove is on"
 
 """
 class MqttPublisher:
-    def __init__(self, broker_ip, broker_port, test_client=None):
+    def __init__(self, broker_ip, broker_port = 8883, test_client=None):
         self.broker_ip = broker_ip
         self.broker_port = broker_port
         self.test_client = test_client
@@ -27,3 +27,4 @@ class MqttPublisher:
         client.connect(self.broker_ip, self.broker_port)
         client.publish(topic, message)
         client.disconnect()
+

@@ -11,7 +11,7 @@ class KnobLocator:
     MAX_ROWS_COLS = 640  # max rows and cols of input image
     def __init__(self, eim_fname):
         self.eim_path = Path(eim_fname)
-        assert self.eim_path.exists()
+        assert self.eim_path.exists(), f"file {eim_fname} does not exist"
         self.runner = ImageImpulseRunner(str(self.eim_path.resolve()))
         self.model_info = self.runner.init()
 
