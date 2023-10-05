@@ -3,108 +3,97 @@ import datetime as dt
 import sys
 sys.path.insert(0, './tests')
 sys.path.insert(0, './src')
-from stove_state import StoveState
-from unittest.mock import MagicMock
-import mqtt_publisher
-import mqtt_topics
+from stove_state import StoveState, StoveStates
+import numpy as np
 
 class test_stove_state(unittest.TestCase):
     import pudb; pudb.set_trace()
 
     def setUp(self):
-        self.mock_client = MagicMock()
-        self.mqtt_pub = mqtt_publisher.MqttPublisher('localhost', 1883, test_client=self.mock_client)        
-
+        pass
+    
     def tearDown(self):
         pass
 
     def test_initial_state(self):
-        s = StoveState(self.mqtt_pub)
+        s = StoveState()
         d = s.get_state()
-        self.assertTrue(d['is_on'] == False)
-        self.assertTrue(d['on_countdown_sec'] == 0)
-
+        self.assertTrue(d['curr_state'] == StoveStates.OFF)
 
     def test_turn_on(self):
-        s = StoveState(self.mqtt_pub)
-        s.set_state(True)
-        s.update()
+        s = StoveState()
+        conf_on_l = np.array([1 for i in range(StoveState.NUM_KNOBS)])
+
+        now_dt = dt.datetime.now() + dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
         d = s.get_state()
-        self.assertTrue(d['is_on'] == True)
-        self.assertTrue(d['on_countdown_sec'] >= 0)
-
-    def test_on_duration(self):
-        import pudb; pudb.set_trace()
-        s = StoveState(self.mqtt_pub)
-        current_dt = dt.datetime.now()
-        s.set_state(True)
-        s.update(current_dt)
-        
-        new_dt = current_dt + dt.timedelta(seconds=StoveState.DEFAULT_PUBLISH_INTERVAL_SEC)
-        s.update(new_dt)
-        d = s.get_state(new_dt)
-        self.assertTrue(d['is_on'] == True)
-        self.assertTrue(d['on_countdown_sec'] == StoveState.DEFAULT_PUBLISH_INTERVAL_SEC)
-
-        # did anything get published?
-        # retrieve mock_client publish arguments
-        self.mock_client.publish.assert_called_once()
-        # retrieve mock_client publish arguments
-        args, kwargs = self.mock_client.publish.call_args
-        topic = args[0]
-        message = args[1]
-        self.assertTrue(topic == mqtt_topics.MqttTopics.STOVE_STATUS_ON_DURATION_MIN)
-        self.assertTrue(message == StoveState.DEFAULT_PUBLISH_INTERVAL_SEC/60)
-        print(message)
+        self.assertTrue(d['curr_state'] == StoveStates.ON)
+        self.assertTrue(d['prev_state'] == StoveStates.OFF)
+        self.assertTrue(d['on_duration_sec'] == 0)
+        self.assertTrue(d['off_duration_sec'] >= 10)
 
 
     def test_turn_on_off(self):
-        s = StoveState(self.mqtt_pub)
+        s = StoveState()
+        conf_on_l = np.array([1 for i in range(StoveState.NUM_KNOBS)])
 
-        # turn on
-        s.set_state(True)
-        s.update()
+        now_dt = dt.datetime.now() + dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
         d = s.get_state()
-        self.assertTrue(d['is_on'] == True)
-        self.assertTrue(d['on_countdown_sec'] >= 0)
+        self.assertTrue(d['curr_state'] == StoveStates.ON)
+        self.assertTrue(d['prev_state'] == StoveStates.OFF)
+        self.assertTrue(d['on_duration_sec'] == 0)  # time spent in ON state
+        self.assertTrue(d['off_duration_sec'] >= 10) # time spnet in OFF state
 
-        # turn off
-        s.set_state(False)
-        s.update()
+        conf_on_l = 0 * conf_on_l
+        now_dt += dt.timedelta(seconds=10)
+        d = s.update(conf_on_l, now_dt)
         d = s.get_state()
-        self.assertTrue(d['is_on'] == False)
-        self.assertTrue(d['on_countdown_sec'] == 0)
+        self.assertTrue(d['curr_state'] == StoveStates.OFF)
+        self.assertTrue(d['prev_state'] == StoveStates.ON)
+        self.assertTrue(d['on_duration_sec'] >= 10)
+        self.assertTrue(d['off_duration_sec'] == 0)
 
-        # check mqtt messages: there should be NO messages
-        self.mock_client.publish.assert_not_called()
+    def test_update_on_on(self):
+        s = StoveState()
+        conf_on_l = np.array([1 for i in range(StoveState.NUM_KNOBS)])
 
-
-    def test_turn_on_for_interval(self):
-        s = StoveState(self.mqtt_pub)
-
-        # turn on
-        s.set_state(True)
-        current_dt = dt.datetime.now()  
-        s.update(current_dt)
+        now_dt = dt.datetime.now() + dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
         d = s.get_state()
-        self.assertTrue(d['is_on'] == True)
-        self.assertTrue(d['on_countdown_sec'] >= 0)
+        self.assertTrue(d['curr_state'] == StoveStates.ON)
+        self.assertTrue(d['prev_state'] == StoveStates.OFF)
+        self.assertTrue(d['on_duration_sec'] == 0)   # time spent in ON state
+        self.assertTrue(d['off_duration_sec'] >= 10) # time spnet in OFF state
 
-        # update after a half interval
-        # this update should NOT generate a message
-        new_dt = current_dt + dt.timedelta(seconds=StoveState.DEFAULT_PUBLISH_INTERVAL_SEC/2)
-        s.update(new_dt)
+        now_dt += dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
+        d = s.get_state()
+        self.assertTrue(d['curr_state'] == StoveStates.ON)
+        self.assertTrue(d['prev_state'] == StoveStates.ON)
+        self.assertTrue(d['on_duration_sec'] >= 10)
+        self.assertTrue(d['off_duration_sec'] >= 10)
 
-        # check for no message
-        self.mock_client.publish.assert_not_called()
+    def test_dont_transition_with_wrong_number_of_knobs(self):
+        s = StoveState()
+        conf_on_l = np.array([1 for i in range(StoveState.NUM_KNOBS - 1)])
 
-        # update after a full interval
-        # this update *should* generate a message
-        new_dt += dt.timedelta(seconds=StoveState.DEFAULT_PUBLISH_INTERVAL_SEC)
-        s.update(new_dt)
-        self.mock_client.publish.assert_called_once()
-        args, kwargs = self.mock_client.publish.call_args
-        topic = args[0]
-        message = args[1]
-        self.assertTrue(topic == mqtt_topics.MqttTopics.STOVE_STATUS_ON_DURATION_MIN)
-        self.assertTrue(message == StoveState.DEFAULT_PUBLISH_INTERVAL_SEC/60)
+        now_dt = dt.datetime.now() + dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
+        d = s.get_state()
+        self.assertTrue(d['curr_state'] == StoveStates.OFF)
+        self.assertTrue(d['prev_state'] == StoveStates.OFF)
+        self.assertTrue(d['on_duration_sec'] == 0)
+        self.assertTrue(d['off_duration_sec'] >= 10)
+
+    def test_dont_transition_with_poor_confidence(self):
+        s = StoveState()
+        conf_on_l = np.array([0.5 for i in range(StoveState.NUM_KNOBS)])
+
+        now_dt = dt.datetime.now() + dt.timedelta(seconds=10)
+        s.update(conf_on_l, now_dt)
+        d = s.get_state()
+        self.assertTrue(d['curr_state'] == StoveStates.OFF)
+        self.assertTrue(d['prev_state'] == StoveStates.OFF)
+        self.assertTrue(d['on_duration_sec'] == 0)
+        self.assertTrue(d['off_duration_sec'] >= 10)
