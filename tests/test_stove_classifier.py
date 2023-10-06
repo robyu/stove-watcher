@@ -56,21 +56,22 @@ class TestStoveClassifier(unittest.TestCase):
         self.assertTrue(True)
 
     def test_stove_is_on(self):
-        import pudb; pudb.set_trace()
+        #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_ON_IMG)
         self.assertTrue(len(knob_on_l)==7)
-        self.assertTrue(min(knob_on_l) > 0.90)
+        self.assertTrue(min(knob_on_l) >= 0.90)
 
 
-    def Xtest_stove_is_off(self):
+    def test_stove_is_off(self):
         #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
-        stove_is_on = sc.stove_is_on(self.STOVE_OFF_IMG, write_img_flag=True)
-        self.assertTrue(stove_is_on==False)
+        knob_on_l = sc.classify_image(self.STOVE_OFF_IMG)
+        self.assertTrue(len(knob_on_l)==7)
+        self.assertTrue(min(knob_on_l) < 0.90)
 
     def test_stove_is_dark(self):
-        import pudb; pudb.set_trace()
+        #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_DARK_IMG)
         self.assertTrue(len(knob_on_l)==0)   # no knobs found

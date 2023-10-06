@@ -34,7 +34,6 @@ class TestKnobClassifier(unittest.TestCase):
         
 
     def test_knob_classify_off(self):
-        import pudb; pudb.set_trace()
         print(f"model: {self.model_path}")
         print(f"image: {self.KNOB_OFF_IMG}")
         kc = knob_classifier.KnobClassifier(self.model_path)
@@ -43,7 +42,6 @@ class TestKnobClassifier(unittest.TestCase):
         self.assertTrue( (1.0 - conf_on) > 0.9)
 
     def test_knob_classify_on(self):
-        import pudb; pudb.set_trace()
         print(f"model: {self.model_path}")
         print(f"image: {self.KNOB_ON_IMG}")
         kc = knob_classifier.KnobClassifier(self.model_path)

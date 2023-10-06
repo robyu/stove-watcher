@@ -24,7 +24,7 @@ tests/data/*.pickle
 tests/out/*.png
 tests/out/*.jpg
 tests/out/reject
-tests/out/test-stove-classifier
+tests/out/test_stove_classifier
 
 
 
