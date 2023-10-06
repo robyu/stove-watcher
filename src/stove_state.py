@@ -66,9 +66,9 @@ class StoveState:
             # not a valid update, so don't bother evaluating transitions
             return
         
-        # use the maximum confidence value 
+        # use the min confidence value 
         # reasoning: if a single knob is on with conf = 1, then the stove is on
-        max_on_conf = np.max(knob_on_conf_l)
+        max_on_conf = np.min(knob_on_conf_l)
         assert max_on_conf >= 0.0 and max_on_conf <= 1.0
 
         # transitions

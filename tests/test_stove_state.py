@@ -7,7 +7,7 @@ from stove_state import StoveState, StoveStates
 import numpy as np
 
 class test_stove_state(unittest.TestCase):
-    import pudb; pudb.set_trace()
+    #import pudb; pudb.set_trace()
 
     def setUp(self):
         pass
