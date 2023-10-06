@@ -33,6 +33,8 @@ class TestStoveClassifier(unittest.TestCase):
 
     def setUp(self):
         print("setup")
+
+        # there's no reason to execute this code pre-test, so it it doesn't really belong here
         if os.uname().sysname == 'Linux':
             self.kl_model_path = Path('./modelfiles/linux-x86-64/knobhead-r08.eim')
             self.kc_model_path = Path('./modelfiles/linux-x86-64/itsagas-r01.eim')
