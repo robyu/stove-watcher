@@ -10,7 +10,6 @@ class TestStoveWatcher(unittest.TestCase):
     CONFIG_FNAME = "./tests/in/config.json"    
     ON_STOVE_IMG = "./tests/in/out-renamed/general/general-0026.jpg"
     OFF_STOVE_IMG = "./tests/in/out-renamed/general/general-0004.jpg"
-    import pudb; pudb.set_trace()
 
     def setUp(self):
         self.config = ConfigStore(Path(TestStoveWatcher.CONFIG_FNAME).resolve())

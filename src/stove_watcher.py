@@ -24,6 +24,7 @@ import dir_mon
 import stove_state
 import argparse
 from pathlib import Path
+import helplib
 
 class StoveWatcher:
 
@@ -47,6 +48,16 @@ class StoveWatcher:
     def _request_image(self):
         self.mqtt_pub.publish(MqttTopics.IC_CAPTURE_NOW, None)
 
+    def _process_img(self, img_file, write_img_flag):
+        # read the image
+        img_path = self.config.ftp_dir / img_file
+        img = helplib.read_image(img_path)
+
+        # knob_on_conf_l is a list of P(knob=on) for each knob
+        knob_on_conf_l = self.classifier.classify_image(img, write_img_flag)
+        return knob_on_conf_l
+
+
     def run(self, 
             max_iter=-1,
             write_img_flag=False):
@@ -60,7 +71,6 @@ class StoveWatcher:
             hold_files_l = res_d['hold_files']  
 
             # if hold_files_l not empty, then print the list of files 
-            # and exit the program
             if hold_files_l:
                 print("The following files are in the holding directory:")
                 for fname in hold_files_l:
@@ -69,14 +79,15 @@ class StoveWatcher:
             #
 
             for img_file in img_files_l:
-                img_path = (Path(self.config.ftp_dir) / img_file).resolve()
-                stove_is_on = self.classifier.stove_is_on(img_path, write_img_flag)
-                self.stove_state.set_state(stove_is_on)
+                knob_on_conf_l = self._process_img(img_file, write_img_flag)
+                self.stove_state.update(knob_on_conf_l)
+
+                stove_state_d = self.stove_state.get_state()
+                #self._send_alerts(latest_state)
 
                 # after processing img_file, delete it
-                os.remove(img_path)
+                os.remove(img_file)                
             #
-            self.stove_state.update()
 
             self.iter_count += 1
             if max_iter > 0 and self.iter_count >= max_iter:
