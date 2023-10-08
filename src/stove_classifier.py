@@ -10,6 +10,7 @@ import knob_classifier
 import knob_locator
 import helplib
 import enum
+import datetime
 
 class StoveClassifier:
     """
@@ -22,11 +23,15 @@ class StoveClassifier:
     def __init__(self, 
                  locater_model_path, 
                  classifier_model_path,
-                 debug_out_path = None,
+                 debug_out_path = None,  # functions as both an output path and enable flag,
+                 reject_out_path = None, # functions as both an output path and enable flag
+                 reject_conf_on_thresh = 0.9,
+                 reject_conf_off_thresh = 0.9,
                  ):
         self.kl = knob_locator.KnobLocator(locater_model_path)
         self.kc = knob_classifier.KnobClassifier(classifier_model_path)
 
+        self.debug_out_path = None
         if debug_out_path != None:
             self.debug_out_path = Path(debug_out_path).resolve()
             assert self.debug_out_path.exists()
@@ -37,6 +42,15 @@ class StoveClassifier:
         self.extra_knob_height = 26
         self.bb_l = []  
         self.adjusted_box_coords_l = []
+
+        self.reject_out_path = None
+        if reject_out_path != None:
+            self.reject_out_path = Path(reject_out_path).resolve()
+            assert self.reject_out_path.exists()
+            assert self.reject_out_path.is_dir()
+        #
+        self.reject_conf_on_thresh = reject_conf_on_thresh
+        self.reject_conf_off_thresh = reject_conf_off_thresh
 
     def _write_img_with_bboxes(self, img, bb_l, fname):
         """
@@ -95,6 +109,21 @@ class StoveClassifier:
         fname = self.debug_out_path / f"{img_path.stem}-knob-{knob_index:02d}-conf-{conf_int:03d}.png"
         helplib.write_image(fname, knob_img)
 
+    def _save_rejects(self, knob_img, knob_on_conf):
+        """
+        if the knob image generates low confidence values, then save it to the reject_out_path
+        for later training
+        """
+        if knob_on_conf > self.reject_conf_on_thresh or (1.0-knob_on_conf) > self.reject_conf_off_thresh:
+            return
+        #
+
+        # generate unique filename from the datetime
+        now = datetime.datetime.now()
+        conf_int = int(knob_on_conf * 100)
+        fname = self.reject_out_path / f"knob-{now.strftime('%Y-%m-%d-%H-%M-%S')}-conf{conf_int:03d}.png"
+        helplib.write_image(fname, knob_img)
+
     def _eval_knobs(self, adjusted_box_coords_l, img, img_path):
         """
         IN
@@ -117,6 +146,9 @@ class StoveClassifier:
                 self._debug_write_knob_image(knob_img, n, img_path, conf_on)
             # 
 
+            if self.reject_out_path != None:
+                self._save_rejects(knob_img, conf_on)
+            #
         #
         # write the stove image w/ bboxes
         if self.debug_out_path != None:

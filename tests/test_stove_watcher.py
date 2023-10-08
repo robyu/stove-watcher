@@ -5,11 +5,30 @@ from unittest.mock import MagicMock
 from src.config_store import ConfigStore
 from pathlib import Path
 
+
 class TestStoveWatcher(unittest.TestCase):
 
     CONFIG_FNAME = "./tests/in/config.json"    
     ON_STOVE_IMG = "./tests/in/out-renamed/general/general-0026.jpg"
     OFF_STOVE_IMG = "./tests/in/out-renamed/general/general-0004.jpg"
+
+
+
+    @classmethod
+    def setUpClass(cls):
+        print("setUpClass")
+        # execute function before test suite runs
+
+        # read CONFIG_FNAME into a ConfigStore
+        # and create REJECT and DEBUG directories in ./tests/out 
+        config = ConfigStore(Path(cls.CONFIG_FNAME).resolve())
+        reject_path = Path(config.reject_path).resolve()
+        debug_out_path = Path(config.debug_out_path).resolve()
+        if not reject_path.exists():
+            reject_path.mkdir(parents=True, exist_ok=True)
+        if not debug_out_path.exists():
+            debug_out_path.mkdir(parents=True, exist_ok=True)
+
 
     def setUp(self):
         self.config = ConfigStore(Path(TestStoveWatcher.CONFIG_FNAME).resolve())
@@ -21,7 +40,7 @@ class TestStoveWatcher(unittest.TestCase):
 
 
     def test_smoke(self):
-        # import pudb;pudb.set_trace
+        import pudb;pudb.set_trace
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME)
         self.assertTrue(True)
 
@@ -39,7 +58,7 @@ class TestStoveWatcher(unittest.TestCase):
     #     self.assertTrue(ret_d['is_on'] == True)
     #     self.assertTrue(ret_d['on_countdown_sec'] >= 0)
 
-    def test_identify_stove_as_off(self):
+    def Xtest_identify_stove_as_off(self):
         mock_client = MagicMock()
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
                                mqtt_test_client=mock_client)

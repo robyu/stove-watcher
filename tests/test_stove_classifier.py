@@ -9,6 +9,7 @@ sys.path.insert(0, './src')
 import helplib 
 import stove_classifier
 import nn_models
+import shutil
 
 class TestStoveClassifier(unittest.TestCase):
     STOVE_ON_IMG = Path('tests/in/out-renamed/general/general-0026.jpg').resolve()
@@ -18,7 +19,15 @@ class TestStoveClassifier(unittest.TestCase):
     STOVE_DARK_IMG = Path('tests/in/out-renamed/general/general-0009.jpg').resolve()
     assert STOVE_DARK_IMG.exists(), f"{STOVE_DARK_IMG} does not exist"
 
+    #
+    # this stove image yields at least one knob with on_conf < 0.9
+    STOVE_INDET_IMG = Path('tests/in/out-renamed/general/general-0015.jpg').resolve()
+
+    REJECT_PATH = Path('./tests/out/test_knob_classifier/reject').resolve()
+
+
     TEST_OUT_DIR = Path('./tests/out/test_stove_classifier').resolve()
+
     @classmethod
     def setUpClass(cls):
         # execute function before test suite runs
@@ -31,6 +40,7 @@ class TestStoveClassifier(unittest.TestCase):
             for f in os.listdir(TestStoveClassifier.TEST_OUT_DIR):
                 os.remove(TestStoveClassifier.TEST_OUT_DIR / f)    
 
+        TestStoveClassifier.REJECT_PATH.mkdir(parents=True, exist_ok=True)
 
     def setUp(self):
         print("setup")
@@ -55,7 +65,7 @@ class TestStoveClassifier(unittest.TestCase):
 
 
     def test_stove_is_off(self):
-        import pudb; pudb.set_trace()
+        #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_OFF_IMG)
         self.assertTrue(len(knob_on_l)==7)
@@ -67,5 +77,22 @@ class TestStoveClassifier(unittest.TestCase):
         knob_on_l = sc.classify_image(self.STOVE_DARK_IMG)
         self.assertTrue(len(knob_on_l)==0)   # no knobs found
 
+    def test_knob_reject_filter(self):
+        # delete all files in REJECT_PATH
+        for f in TestStoveClassifier.REJECT_PATH.iterdir():
+            f.unlink()
 
+        sc = stove_classifier.StoveClassifier(self.kl_model_path,
+                                              self.kc_model_path,
+                                              reject_out_path = TestStoveClassifier.REJECT_PATH,
+                                            )
+        knob_on_l = sc.classify_image(self.STOVE_INDET_IMG)
+
+        min_conf_on = np.min(knob_on_l)
+        self.assertTrue( min_conf_on < sc.reject_conf_on_thresh and (1.0 - min_conf_on) < sc.reject_conf_on_thresh)
+
+        # check that the reject filter wrote a file to REJECT_PATH
+        reject_files_l = list(TestStoveClassifier.REJECT_PATH.iterdir())
+        print(reject_files_l)
+        self.assertTrue( len(reject_files_l) >= 1)
 

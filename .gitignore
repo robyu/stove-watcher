@@ -23,8 +23,8 @@ data-from-ei/.ipynb_checkpoints
 tests/data/*.pickle
 tests/out/*.png
 tests/out/*.jpg
-tests/out/reject
-tests/out/test_stove_classifier
+tests/out/*
+
 
 
 
