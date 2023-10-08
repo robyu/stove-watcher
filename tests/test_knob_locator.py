@@ -11,6 +11,7 @@ sys.path.insert(0, './src')
 import helplib 
 import knob_locator 
 import boundingboxfile
+import nn_models
 
 class TestKnobLocator(unittest.TestCase):
     KNOBS_RESIZED_PATH = Path('tests/in/out-resized/general/general-0026.png')
@@ -19,13 +20,7 @@ class TestKnobLocator(unittest.TestCase):
     KNOBS_PATH = Path('tests/in/out-renamed/general/general-0026.jpg')
     assert KNOBS_PATH.exists(), f"{KNOBS_PATH} does not exist"
 
-    if os.uname().sysname == 'Linux':
-        MODEL_PATH = Path('./modelfiles/linux-x86-64/knobhead-r08.eim')
-    elif os.uname().sysname == 'Darwin':
-        MODEL_PATH = Path('./modelfiles/macos/knobhead-r08.eim')
-    else:
-        assert False, f"unknown platform {os.uname().sysname}"
-    assert MODEL_PATH.exists(), f"MODEL_PATH {MODEL_PATH} does not exist"
+    MODEL_PATH = nn_models.get_model_path(nn_models.KNOB_SEGMENTER)
 
     def setUp(self):
         print("setup")
