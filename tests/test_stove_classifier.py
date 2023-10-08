@@ -8,6 +8,7 @@ sys.path.insert(0, './tests')
 sys.path.insert(0, './src')
 import helplib 
 import stove_classifier
+import nn_models
 
 class TestStoveClassifier(unittest.TestCase):
     STOVE_ON_IMG = Path('tests/in/out-renamed/general/general-0026.jpg').resolve()
@@ -35,18 +36,8 @@ class TestStoveClassifier(unittest.TestCase):
         print("setup")
 
         # there's no reason to execute this code pre-test, so it it doesn't really belong here
-        if os.uname().sysname == 'Linux':
-            self.kl_model_path = Path('./modelfiles/linux-x86-64/knobhead-r08.eim')
-            self.kc_model_path = Path('./modelfiles/linux-x86-64/itsagas-r01.eim')
-        elif os.uname().sysname == 'Darwin':
-            self.kl_model_path = Path('./modelfiles/macos/knobhead-r08.eim')  # knob locator
-            self.kc_model_path = Path('./modelfiles/macos/itsagas-r01.eim') # knob classifier
-        else:
-            assert False, f"unknown platform {os.uname().sysname}"
-        assert self.kl_model_path.exists(), f"model_path {self.kl_model_path} does not exist"
-        assert self.kc_model_path.exists(), f"model_path {self.kc_model_path} does not exist"
-
-        
+        self.kl_model_path = nn_models.get_model_path(nn_models.KNOB_SEGMENTER)
+        self.kc_model_path = nn_models.get_model_path(nn_models.KNOB_CLASSIFIER)
 
     def tearDown(self):
         print("teardown")
@@ -64,7 +55,7 @@ class TestStoveClassifier(unittest.TestCase):
 
 
     def test_stove_is_off(self):
-        #import pudb; pudb.set_trace()
+        import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_OFF_IMG)
         self.assertTrue(len(knob_on_l)==7)
