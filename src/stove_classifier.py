@@ -11,6 +11,7 @@ import knob_locator
 import helplib
 import enum
 import datetime
+import numpy as np
 
 class StoveClassifier:
     """
@@ -101,28 +102,31 @@ class StoveClassifier:
         #
         return adjusted_box_coords_l
 
-    def _debug_write_knob_image(self, knob_img, knob_index, img_path, knob_on_conf):
+    def _debug_write_knob_image(self, out_path, knob_img, knob_index, img_path, knob_on_conf):
         """
         write individual knob image with a nice filename
         """
+        assert out_path.exists(), f"output path {out_path} does not exist"
+
         conf_int = int(knob_on_conf * 100)
-        fname = self.debug_out_path / f"{img_path.stem}-knob-{knob_index:02d}-conf-{conf_int:03d}.png"
+        fname = out_path / f"{img_path.stem}-knob-{knob_index:02d}-onconf-{conf_int:03d}.png"
         helplib.write_image(fname, knob_img)
 
-    def _save_rejects(self, knob_img, knob_on_conf):
-        """
-        if the knob image generates low confidence values, then save it to the reject_out_path
-        for later training
-        """
-        if knob_on_conf > self.reject_conf_on_thresh or (1.0-knob_on_conf) > self.reject_conf_off_thresh:
-            return
-        #
+    # def _save_rejects(self, knob_img, knob_on_conf, img_path):
+    #     """
+    #     if the knob image generates low confidence values, then save it to the reject_out_path
+    #     for later training
+    #     """
+    #     if knob_on_conf < self.reject_conf_on_thresh or (1.0-knob_on_conf) < self.reject_conf_off_thresh:
+    #         return
+    #     #
 
-        # generate unique filename from the datetime
-        now = datetime.datetime.now()
-        conf_int = int(knob_on_conf * 100)
-        fname = self.reject_out_path / f"knob-{now.strftime('%Y-%m-%d-%H-%M-%S')}-conf{conf_int:03d}.png"
-        helplib.write_image(fname, knob_img)
+    #     # generate unique filename from the datetime
+    #     # if the original img_path is Path('/a/b/foo.png') then the reject filename will be
+    #     # self.reject_out_path / "foo-knob-conf000.png"
+    #     conf_int = int(knob_on_conf * 100)
+    #     fname = self.reject_out_path / f"{img_path.stem}-knob-conf{conf_int:03d}.png"
+    #     helplib.write_image(fname, knob_img)
 
     def _eval_knobs(self, adjusted_box_coords_l, img, img_path):
         """
@@ -143,11 +147,11 @@ class StoveClassifier:
             knob_on_conf_l.append(conf_on)
             #
             if self.debug_out_path != None:
-                self._debug_write_knob_image(knob_img, n, img_path, conf_on)
+                self._debug_write_knob_image(self.debug_out_path, knob_img, n, img_path, conf_on)
             # 
 
-            if self.reject_out_path != None:
-                self._save_rejects(knob_img, conf_on)
+            if self.reject_out_path != None and conf_on < self.reject_conf_on_thresh and (1.0-conf_on) < self.reject_conf_off_thresh:
+                self._debug_write_knob_image(self.reject_out_path, knob_img, n, img_path, conf_on)
             #
         #
         # write the stove image w/ bboxes
@@ -155,7 +159,7 @@ class StoveClassifier:
             fname = self.debug_out_path / f"{img_path.stem}-knob-locator-out.png"
             self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
 
-        return knob_on_conf_l
+        return np.array(knob_on_conf_l)
 
     def classify_image(self, img_path):
         """
@@ -166,7 +170,9 @@ class StoveClassifier:
         OUT
         knob_on_conf_l: list of P(knob=on) for each knob
         """
-        assert img_path.exists()
+        assert img_path.exists(), f"image path {img_path} does not exist"
+        print(f"classifying image {img_path}")
+        
         img_orig = helplib.read_image_rgb(img_path)
 
         self.bb_l = []

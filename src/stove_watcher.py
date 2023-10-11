@@ -28,6 +28,7 @@ import helplib
 
 class StoveWatcher:
 
+    # TODO: remove model paths from config file; use nn_models.py instead
     def __init__(self, 
                  config_fname, 
                  mqtt_test_client = None, # specify mock mqtt client for testing
@@ -37,25 +38,13 @@ class StoveWatcher:
         self.dirmon = dir_mon.DirMon(self.config.ftp_dir, Path(self.config.holding_dir).resolve() )
         self.classifier = stove_classifier.StoveClassifier( Path(self.config.locater_model_path).resolve(),
                                                             Path(self.config.classifier_model_path).resolve(),
-                                                            Path(self.config.reject_path).resolve(),
-                                                            Path(self.config.debug_out_path).resolve() )
+                                                            debug_out_path = Path(self.config.debug_out_path).resolve(),
+                                                            reject_out_path = Path(self.config.reject_path).resolve(),
+                                                            )
         self.mqtt_pub = mqtt_publisher.MqttPublisher(self.config.mqtt_broker_ip, test_client = mqtt_test_client)
-        self.stove_state = stove_state.StoveState(self.mqtt_pub, 
-                                                  self.config.alert_interval_sec)
+        self.stove_state = stove_state.StoveState()
         self.loop_interval_sec = self.config.loop_interval_sec
         self.iter_count = 0
-
-    def _request_image(self):
-        self.mqtt_pub.publish(MqttTopics.IC_CAPTURE_NOW, None)
-
-    def _process_img(self, img_file, write_img_flag):
-        # read the image
-        img_path = self.config.ftp_dir / img_file
-        img = helplib.read_image(img_path)
-
-        # knob_on_conf_l is a list of P(knob=on) for each knob
-        knob_on_conf_l = self.classifier.classify_image(img, write_img_flag)
-        return knob_on_conf_l
 
 
     def run(self, 
@@ -65,7 +54,7 @@ class StoveWatcher:
 
         while loop_flag:
             time.sleep(self.loop_interval_sec)
-            self._request_image()
+            self.mqtt_pub.publish(MqttTopics.IC_CAPTURE_NOW, None)  
             res_d = self.dirmon.get_new_files()  # this will block until timeout or a file appears
             img_files_l = res_d['new_files']
             hold_files_l = res_d['hold_files']  
@@ -79,7 +68,8 @@ class StoveWatcher:
             #
 
             for img_file in img_files_l:
-                knob_on_conf_l = self._process_img(img_file, write_img_flag)
+                print(f"processing {img_file}")
+                knob_on_conf_l = self.classifier.classify_image(img_file)
                 self.stove_state.update(knob_on_conf_l)
 
                 stove_state_d = self.stove_state.get_state()

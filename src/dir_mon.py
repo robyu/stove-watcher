@@ -22,10 +22,13 @@ class DirMon:
         """
         hold_files_l = []
         for f in files_l:
-            if f.startswith('hold-'):
-                hold_files_l.append(f)
+            if f.name.startswith('hold-'):
+                # define hold_f with the same base filename but with a path defined by self.holding_dir
+                hold_f = self.holding_dir / f.name
                 # move the file to the holding directory
-                os.rename(self.ftp_dir / f, self.holding_dir / f)
+                f.rename(hold_f)
+                # append hold_f to hold_files_l
+                hold_files_l.append(hold_f)
                 # remove the file from the list of files
                 files_l.remove(f)
         return files_l, hold_files_l
@@ -36,15 +39,15 @@ class DirMon:
 
         returns:
             a dictionary with two keys:
-                new_files: a list of filenames that are new
-                hold_files: a list of filenames that are being held
+                new_files: a list of file paths that are new
+                hold_files: a list of file paths that are being held
         """
         now_dt = datetime.datetime.now()
         found_files = False
 
         while not found_files and (datetime.datetime.now() - now_dt).seconds < self.timeout_sec:
             # Get a list of all files in the FTP directory that match "*.png" or "*.jpg" or "*.jpeg"
-            files_l = [f for f in os.listdir(self.ftp_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+            files_l = [(self.ftp_dir / f).resolve() for f in os.listdir(self.ftp_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
 
             if len(files_l) > 0:
                 found_files = True
