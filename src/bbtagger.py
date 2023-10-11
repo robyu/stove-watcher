@@ -153,7 +153,11 @@ class Tagger:
         #print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
 
     def handle_mouseup(self, event):
-        self.rect_l.append(self.curr_rect)
+        if len(self.rect_l) < 7:
+            self.rect_l.append(self.curr_rect)
+        else:
+            print("too many bounding boxes")    
+        #
         self.curr_rect = None
 
     #
