@@ -103,9 +103,10 @@ class Tagger:
 
             # self.write_bb_json()
             #sys.exit(0)
-            if event.char=='q':
+            if event.char=='q':    # lower case: continue to next image
                 self.retval = 0 # normal exit
             else:
+                assert event.char=='Q'
                 self.retval = 1  # exit loop
             #
             self.root.destroy() # destroy tk window and stop main loop
