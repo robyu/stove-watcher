@@ -11,13 +11,12 @@ import os
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    default_pickle_path = Path('../data/out-bbtagger/')
 
     valid_cmds = ['tag','tagall','tagnext','audit','writejson']
     parser.add_argument("cmd", choices=valid_cmds, help=f'one of {valid_cmds}')
-    parser.add_argument("image_path", type=Path, help="path to image or image dir")
+    parser.add_argument("image_path", type=Path, help="path to (resized, square) image or image dir")
     parser.add_argument("-p", "--pickle_path", type=Path,
-                        default=default_pickle_path, help=f"destination path for output rect.pickle (OR for audit: pickle input path); default {default_pickle_path}")
+                        help=f"destination path for output rect.pickle (OR for audit: pickle input path)")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     parser.add_argument("--fix_value_field", action="store_true", default=False, help="for all bbox entries, set value field to 1.0 and then rewrite rects.pickle")
     return parser.parse_args()
@@ -219,7 +218,8 @@ def tag_next_untagged(image_dir, pickle_path):
     
 
 def audit_tags(image_dir, pickle_path, fix_value_field):
-    assert image_dir.is_dir()
+    assert image_dir.is_dir(), f"{image_dir} is not a directory"
+    assert pickle_path.is_dir(), f"{pickle_path} is not a directory"
     bboxfile = boundingboxfile.BBoxFile(pickle_path)
     files_l = find_img_files(image_dir)
 

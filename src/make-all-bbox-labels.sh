@@ -2,6 +2,7 @@
 #
 # use bbtagger to convert all bbox pickle files into EI-compatible JSON files
 #
+python bbtagger.py writejson -p ../data/out-bbtagger/boresight1 ../data/out-resized/boresight1
 python bbtagger.py writejson -p ../data/out-bbtagger/general/ ../data/out-resized/general/
 python bbtagger.py writejson -p ../data/out-bbtagger/robert-twist ../data/out-resized/robert-twist/
 python bbtagger.py writejson -p ../data/out-bbtagger/single-twist/ ../data/out-resized/single-twist/

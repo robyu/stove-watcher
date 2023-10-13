@@ -110,6 +110,7 @@ class StoveClassifier:
 
         conf_int = int(knob_on_conf * 100)
         fname = out_path / f"{img_path.stem}-knob-{knob_index:02d}-onconf-{conf_int:03d}.png"
+        print(f"writing knob image to {fname}")
         helplib.write_image(fname, knob_img)
 
     # def _save_rejects(self, knob_img, knob_on_conf, img_path):
@@ -157,6 +158,7 @@ class StoveClassifier:
         # write the stove image w/ bboxes
         if self.debug_out_path != None:
             fname = self.debug_out_path / f"{img_path.stem}-knob-locator-out.png"
+            print(f"writing image with knobs to {fname}")
             self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
 
         return np.array(knob_on_conf_l)

@@ -42,6 +42,11 @@ class KnobLocator:
                                      label=d['label']) for d in res['result']['bounding_boxes']]
 
         assert len(bb_l)==len(res['result']['bounding_boxes'])
+
+        #
+        # if img_out is grayscale, convert to RGB
+        if len(img_out.shape) == 2:
+            img_out = cv2.cvtColor(img_out, cv2.COLOR_GRAY2RGB)
         return bb_l, img_out
 
     def _reshape_to_square(self, img):
