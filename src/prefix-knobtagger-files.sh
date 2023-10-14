@@ -17,8 +17,10 @@ rename_files() {
 
 #
 # knob images extracted from hand-boxed images
-BASEDIR=../data/out-knobtagger/bbtagger
-dirs=("$BASEDIR/general/on"
+BASEDIR=../data/tagged-knobs/bbtagger
+dirs=("$BASEDIR/boresight1/on",
+      "$BASEDIR/boresight1/off",
+      "$BASEDIR/general/on"
       "$BASEDIR/general/off"
       "$BASEDIR/robert-twist/on"
       "$BASEDIR/robert-twist/off"
@@ -38,7 +40,7 @@ done
 
 #
 # knob-images extracted by Edge Impulse-processed images
-BASEDIR=../data/out-knobtagger/ei
+BASEDIR=../data/tagged-knobs/ei
 dirs=("$BASEDIR/general/on"
       "$BASEDIR/general/off"
       "$BASEDIR/robert-twist/on"
