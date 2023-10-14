@@ -39,6 +39,20 @@ class BBox:
     def y1(self):
         return self.y + self.h
     
+def canvas_rect_to_bbox(rect_coords):
+    """
+    convert a canvas rect's coords (x,y,w,h) to a bounding box tuple
+    """
+    x = rect_coords[0]
+    y = rect_coords[1]
+    w = rect_coords[2] - x
+    assert w > 0
+    h = rect_coords[3] - y
+    assert h > 0
+    print(f"{rect_coords}")
+
+    bbox = BBox(x, y, w, h)
+    return bbox
 
 class ImageBBoxes:
     """
@@ -54,8 +68,8 @@ class ImageBBoxes:
     def __str__(self):
         #import pudb; pudb.set_trace()
         s = f"image_path={str(self.image_path)}, width={self.image_width}, height={self.image_height})"
-        for bbox in self.bbox_l:
-            s += f"\n{str(bbox)}"
+        for n, bbox in enumerate(self.bbox_l):
+            s += f"\n{n} {str(bbox)}"
         #
         return s
 
@@ -98,63 +112,6 @@ class ImageBBoxes:
         #
         return rect_l
         
-    def _canvas_rect_to_bbox(self, rect_coords):
-        """
-        convert a canvas rect to a bounding box tuple
-        """
-        x = rect_coords[0]
-        y = rect_coords[1]
-        w = rect_coords[2] - x
-        assert w > 0
-        h = rect_coords[3] - y
-        assert h > 0
-        print(f"{rect_coords}")
-
-        bbox = BBox(x, y, w, h)
-        return bbox
-
-    def canvas_rects_to_bboxes(self, canvas, rect_l):
-        # clear the ibb list of bboxes and re-add each rect
-        self.bbox_l = []
-        for rect in rect_l:
-            rect_coords = canvas.bbox(rect)  # get tuple coord
-            assert len(rect_coords)==4
-            bbox_coords = self._canvas_rect_to_bbox(rect_coords)
-            self.bbox_l.append(bbox_coords)
-        #
-
-
-        
-# def make_id_dict(image_path,
-#                  image_width,
-#                  image_height,
-#                  bb_l # list of bounding boxes
-#                  ):
-#     assert image_width >= image_height
-#     d = {'image_path': str(image_path),
-#          'image_width': image_width,
-#          'image_height': image_height,
-#          'bounding_boxes': bb_l}
-#     return d
-        
-# def id_dict_to_bboxes(d):
-#     assert "image_path" in d
-#     assert "image_width" in d
-#     assert "image_height" in d
-#     assert "bounding_boxes" in d
-
-#     ibb = ImageBBoxes(d['image_path'],
-#                       d['image_width'],
-#                       d['image_height'])
-    
-#     for bbox in d['bounding_boxes']:
-#         ibb.append(bbox)
-#     #
-#     return ibb
-
-
-        
-
 
 # TODO: move to helplib
 def mark_bb_on_img(img, bb):

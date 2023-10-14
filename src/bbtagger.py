@@ -64,7 +64,11 @@ class Tagger:
             self.bbox_file[self.image_path] = self.img_bboxes
         #
 
-        self.rect_l = []   # a list of canvas rects
+        #
+        # bounding boxes are mirrored in canvas_rect_l (a list of rect objects on the canvas)
+        # and bbox_l, a list of bounding boxes
+        self.canvas_rect_l = []   # a list of canvas rects; this is necessary for bookkeeping when deleting bbox
+        self.bbox_l = self.img_bboxes.bbox_l # a more convenient way of accessing self.img_bboxes.bbox_l
     
     def display(self):
         # Display the image
@@ -73,8 +77,8 @@ class Tagger:
         #
         # gotta add the rects to the canvas after it's been displayed
         # otherwise they don't show up
-        #self.rect_l = self.all_files_dict_to_rects(self.all_files_d, self.image_path.name)
-        self.rect_l = self.img_bboxes.bboxes_to_canvas_rects(self.canvas)
+        #self.canvas_rect_l = self.all_files_dict_to_rects(self.all_files_d, self.image_path.name)
+        self.canvas_rect_l = self.img_bboxes.bboxes_to_canvas_rects(self.canvas)
         
         callback = partial(self.handle_keypress, self)
         self.root.bind("<KeyPress>", self.handle_keypress)  # amazingly, "self" is correctly passed to the callback
@@ -88,7 +92,10 @@ class Tagger:
         if event.char.lower() == 'q':
             #
             # copy canvas rect list back into all_files_d
-            self.img_bboxes.canvas_rects_to_bboxes(self.canvas, self.rect_l)
+            #self.img_bboxes.canvas_rects_to_bboxes(self.canvas, self.canvas_rect_l)
+            assert len(self.bbox_l) == len(self.canvas_rect_l)
+            print("Writing bounding boxes")
+            print(self.img_bboxes)
             self.bbox_file[self.image_path] = self.img_bboxes
             #self.all_files_d[self.image_path.name] = self.convert_rects_to_bboxes(self.rect_l)
 
@@ -117,12 +124,16 @@ class Tagger:
 
     def delete_last_rect(self):
         try:
-            rect = self.rect_l.pop()
+            rect = self.canvas_rect_l.pop()
             self.canvas.delete(rect)
+
+            # also delete from bbox list
+            self.bbox_l.pop()
+
             
         except IndexError:
             print("no bounding boxes in list")
-        #
+        #'q'
         
 
     def handle_mousepress(self, event):
@@ -152,20 +163,19 @@ class Tagger:
         #print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
 
     def handle_mouseup(self, event):
-        if len(self.rect_l) < 7:
-            self.rect_l.append(self.curr_rect)
+        if len(self.canvas_rect_l) < 7:
+            #
+            # add new rect to list of canvas rects
+            self.canvas_rect_l.append(self.curr_rect)
+
+            # add new rect to bbox list
+            rect_coords = self.canvas.bbox(self.curr_rect) # get coords from canvas
+            bbox = boundingboxfile.canvas_rect_to_bbox(rect_coords)
+            self.img_bboxes.add_bbox(bbox)
         else:
             print("too many bounding boxes")    
         #
         self.curr_rect = None
-
-    #
-    # def destroy(self):
-    #     self.canvas.delete(self.image_tk)
-        
-
-    # def __del__(self):
-    #     self.destroy()
 
 def find_img_files(image_dir):
     assert image_dir.is_dir()
