@@ -19,12 +19,13 @@ def parse_args():
                         help=f"destination path for output rect.pickle (OR for audit: pickle input path)")
     parser.add_argument("-d", "--delete", action="store_true", default=False, help="delete existing rect.pickle")
     parser.add_argument("--fix_value_field", action="store_true", default=False, help="for all bbox entries, set value field to 1.0 and then rewrite rects.pickle")
+    parser.add_argument("--boresight_bboxes", action="store_true", default=False, help="initialize image with boresight bounding boxes")
     return parser.parse_args()
 
 class Tagger:
     MIN_RECT_WIDTH = 24
     MIN_RECT_HEIGHT = 24
-    def __init__(self, image_path, out_path):
+    def __init__(self, image_path, out_path, init_bbox_l = None):
         assert isinstance(image_path, Path)
         self.image_path = image_path
         self.root = Tk()
@@ -64,6 +65,14 @@ class Tagger:
             self.bbox_file[self.image_path] = self.img_bboxes
         #
 
+        # if an init_bbox_l was provided, then overwrite self.img_bboxes.bbox_l
+        if init_bbox_l:
+            print("using initial bbox list:")
+            for n, bbox in enumerate(init_bbox_l):
+                print(f"{n}: {bbox}")
+            self.img_bboxes.bbox_l = init_bbox_l.copy()
+
+
         #
         # bounding boxes are mirrored in canvas_rect_l (a list of rect objects on the canvas)
         # and bbox_l, a list of bounding boxes
@@ -87,6 +96,8 @@ class Tagger:
         self.root.bind("<ButtonRelease-1>", self.handle_mouseup)
         self.root.mainloop()
 
+        return self.bbox_l
+
     def handle_keypress(self, event):
         #print(f"got keypress {event.char.lower()}")
         if event.char.lower() == 'q':
@@ -94,7 +105,8 @@ class Tagger:
             # copy canvas rect list back into all_files_d
             #self.img_bboxes.canvas_rects_to_bboxes(self.canvas, self.canvas_rect_l)
             assert len(self.bbox_l) == len(self.canvas_rect_l)
-            print("Writing bounding boxes")
+            print("-----------------------------")
+            print(f"Writing bounding {len(self.bbox_l)} boxes")
             print(self.img_bboxes)
             self.bbox_file[self.image_path] = self.img_bboxes
             #self.all_files_d[self.image_path.name] = self.convert_rects_to_bboxes(self.rect_l)
@@ -163,19 +175,30 @@ class Tagger:
         #print(f"mousedrag w={self.end_x-self.start_x}, h={self.end_y-self.start_y}")
 
     def handle_mouseup(self, event):
-        if len(self.canvas_rect_l) < 7:
+        rect_coords = self.canvas.bbox(self.curr_rect) # get coords from canvas
+        if len(self.canvas_rect_l) < 7 and rect_coords[0] >= 0 and rect_coords[1] >= 0:
             #
             # add new rect to list of canvas rects
             self.canvas_rect_l.append(self.curr_rect)
 
             # add new rect to bbox list
-            rect_coords = self.canvas.bbox(self.curr_rect) # get coords from canvas
+
             bbox = boundingboxfile.canvas_rect_to_bbox(rect_coords)
             self.img_bboxes.add_bbox(bbox)
         else:
-            print("too many bounding boxes")    
+            print("too many bounding boxes or bad coords")    
+            self.canvas.delete(self.curr_rect)
         #
         self.curr_rect = None
+
+
+BORESIGHT_BBOX_L = [boundingboxfile.BBox(243, 301, 28, 28),
+                    boundingboxfile.BBox(273, 302, 28, 28),
+                    boundingboxfile.BBox(384, 301, 28, 28),
+                    boundingboxfile.BBox(414, 302, 28, 28),
+                    boundingboxfile.BBox(434, 296, 28, 28),
+                    boundingboxfile.BBox(455, 304, 28, 28),
+                    boundingboxfile.BBox(483, 301, 28, 28)]
 
 def find_img_files(image_dir):
     assert image_dir.is_dir()
@@ -185,30 +208,30 @@ def find_img_files(image_dir):
     return img_files
 
     
-def tag_one_image(image_path, pickle_path):
+def tag_one_image(image_path, pickle_path, init_bbox_l = None):
     assert image_path.exists()
     print(f"tagging {image_path}")
     pickle_path.mkdir(exist_ok=True, parents=True)
-    tagger = Tagger(image_path, pickle_path)
+    tagger = Tagger(image_path, pickle_path, init_bbox_l = init_bbox_l)
     tagger.display()
     print(tagger.retval)
     return tagger.retval
     
 
-def tag_all_images(image_dir, pickle_path):
+def tag_all_images(image_dir, pickle_path, init_bbox_l = None):
     assert image_dir.is_dir()
     #
     # load each image in the directory
     
     files_l = find_img_files(image_dir)
     for p in files_l:
-        retval = tag_one_image(p, pickle_path)
+        retval = tag_one_image(p, pickle_path, init_bbox_l = init_bbox_l)
         if retval:
             break  # user indicated to exit the entire loop
     #
     
 
-def tag_next_untagged(image_dir, pickle_path):
+def tag_next_untagged(image_dir, pickle_path, init_bbox_l = None):
     assert image_dir.is_dir()
     bboxfile = boundingboxfile.BBoxFile(pickle_path)
     files_l = find_img_files(image_dir)
@@ -217,14 +240,14 @@ def tag_next_untagged(image_dir, pickle_path):
     for file_path in files_l:
         fname = file_path.name
         if fname in bboxfile.images_d and len(bboxfile.images_d[fname].bb_l) <= 0:
-            print(fname)
+            print(f"{fname} is tagged")
             break
         #
     #
     target_path = image_dir / fname
     print(target_path)
     assert target_path.exists()
-    tag_one_image(target_path, pickle_path)
+    tag_one_image(target_path, pickle_path, init_bbox_l)
     
 
 def audit_tags(image_dir, pickle_path, fix_value_field):
@@ -273,6 +296,11 @@ if __name__=="__main__":
         if pickle_path.is_file():
             os.remove(pickle_path)
     #
+    init_bbox_l = None
+    if args.boresight_bboxes:
+        # make a copy of the list object so that the original isn't modified
+        init_bbox_l = BORESIGHT_BBOX_L.copy()
+
     if args.cmd=="tag":
         #
         # tag a single image
@@ -281,17 +309,21 @@ if __name__=="__main__":
             args.image_path = Path('../data/out-resized/general/general-0000.png')
         #
         tag_one_image(args.image_path,
-                      args.pickle_path)
+                      args.pickle_path,
+                      init_bbox_l = init_bbox_l)
     elif args.cmd=="tagall":
+
         #
         # iterate through all images in a path
         tag_all_images(args.image_path,
-                       args.pickle_path)
+                       args.pickle_path,
+                       init_bbox_l = init_bbox_l)
     elif args.cmd=="tagnext":
         #
         # tag next untagged image
         tag_next_untagged(args.image_path,
-                          args.pickle_path)
+                          args.pickle_path,
+                          init_bbox_l = init_bbox_l)
     elif args.cmd=="audit":
         audit_tags(args.image_path,
                    args.pickle_path,
