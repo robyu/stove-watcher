@@ -3,7 +3,7 @@
 #
 # convert off knob images into on images by rotating them
 
-SRC="../data/out-knobtagger/bbtagger/general"
+SRC="../data/tagged-knobs/bbtagger/boresight1"
 
 INPUT_DIR="$SRC/off"
 DEST="$SRC/augmented_on"
