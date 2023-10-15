@@ -5,7 +5,7 @@ import os
 
 #KNOB_SEGMENTER = "knobhead-r08.eim"
 KNOB_SEGMENTER = "knob-segmenter-r09.eim"
-KNOB_CLASSIFIER = "itsagas-r02.eim"
+KNOB_CLASSIFIER = "knob-classifier-r03.eim"
 
 def get_model_path(model_name, os_name=None):
     """
