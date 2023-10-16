@@ -3,10 +3,10 @@
 #
 # convert off knob images into on images by rotating them
 
-SRC="../data/tagged-knobs/bbtagger/general"
+SRC="../data/tagged-knobs/ei/boresight1"
 
-INPUT_DIR="$SRC/on"
-DEST="$SRC/augmented_off"
+INPUT_DIR="$SRC/off"
+DEST="$SRC/augmented_on"
 
 # Delete rotated directory if it exists
 if [ -d "$DEST" ]; then

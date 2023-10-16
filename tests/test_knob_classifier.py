@@ -31,7 +31,7 @@ class TestKnobClassifier(unittest.TestCase):
         
 
     def test_knob_classify_off(self):
-        print(f"model: {self.MODEL_PATH}")
+        print(f"\nmodel: {self.MODEL_PATH}")
         print(f"image: {self.KNOB_OFF_IMG}")
         kc = knob_classifier.KnobClassifier(self.MODEL_PATH)
         img_rgb = helplib.read_image_rgb(self.KNOB_OFF_IMG)
@@ -39,15 +39,15 @@ class TestKnobClassifier(unittest.TestCase):
         self.assertTrue( (1.0 - conf_on) > 0.9)
 
     def test_knob_classify_on(self):
-        print(f"model: {self.MODEL_PATH}")
+        print(f"\nmodel: {self.MODEL_PATH}")
         print(f"image: {self.KNOB_ON_IMG}")
         kc = knob_classifier.KnobClassifier(self.MODEL_PATH)
         img_rgb = helplib.read_image_rgb(self.KNOB_ON_IMG)
         conf_on = kc.classify(img_rgb)
         self.assertTrue( conf_on > 0.9)
         
-    def test_knob_classify_indeterminate(self):
-        print(f"model: {self.MODEL_PATH}")
+    def test_knob_classify_indeterminate1(self):
+        print(f"\nmodel: {self.MODEL_PATH}")
         print(f"image: {self.KNOB_INDET_IMG}")
         kc = knob_classifier.KnobClassifier(self.MODEL_PATH)
         img_rgb = helplib.read_image_rgb(self.KNOB_INDET_IMG)
@@ -70,7 +70,7 @@ class TestKnobClassifier(unittest.TestCase):
         # bbt-single-twist-0025-b00.png
         # bbt-single-twist-0039-b00.png
         # ei-single-twist-0029-b00.png
-        print(f"model: {self.MODEL_PATH}")
+        print(f"\nmodel: {self.MODEL_PATH}")
         print(f"image: {self.KNOB_INDET_IMG}")
         kc = knob_classifier.KnobClassifier(self.MODEL_PATH)
         img_rgb = helplib.read_image_rgb(self.KNOB_INDET_IMG)

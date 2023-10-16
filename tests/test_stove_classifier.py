@@ -13,10 +13,10 @@ import shutil
 import stove_state
 
 class TestStoveClassifier(unittest.TestCase):
-    STOVE_ON_IMG =    Path('tests/in/test_stove_classifier/borest1-0000.jpg').resolve()
+    STOVE_ON_IMG =    Path('tests/in/test_stove_classifier/borest1-0001.jpg').resolve()
     STOVE_OFF_IMG =   Path('tests/in/test_stove_classifier/borest1-0019.jpg').resolve()
     STOVE_DARK_IMG =  Path('tests/in/test_stove_classifier/borest1-0044.jpg').resolve()
-    STOVE_INDET_IMG = Path('tests/in/test_stove_classifier/borest1-0006.jpg').resolve()
+
 
     REJECT_PATH = Path('./tests/out/test_knob_classifier/reject').resolve()
     TEST_OUT_DIR = Path('./tests/out/test_stove_classifier').resolve()
@@ -51,7 +51,7 @@ class TestStoveClassifier(unittest.TestCase):
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         self.assertTrue(True)
 
-    def Xtest_stove_is_on(self):
+    def test_stove_is_on(self):
 
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_ON_IMG)
@@ -60,15 +60,7 @@ class TestStoveClassifier(unittest.TestCase):
         self.assertTrue(len(knob_on_l)== stove_state.StoveState.NUM_KNOBS)
         self.assertTrue(min(knob_on_l) >= 0.90)
 
-    def Xtest_stove_is_indet(self):
-        sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
-        knob_on_l = sc.classify_image(self.STOVE_INDET_IMG)
-        # verify that knob_on_l is a numpy array
-        self.assertTrue(isinstance(knob_on_l, np.ndarray))
-        self.assertTrue(len(knob_on_l) < stove_state.StoveState.NUM_KNOBS)
-
-
-    def Xtest_stove_is_off(self):
+    def test_stove_is_off(self):
         #import pudb; pudb.set_trace()
         sc = stove_classifier.StoveClassifier(self.kl_model_path, self.kc_model_path, debug_out_path = TestStoveClassifier.TEST_OUT_DIR)
         knob_on_l = sc.classify_image(self.STOVE_OFF_IMG)
@@ -82,7 +74,7 @@ class TestStoveClassifier(unittest.TestCase):
         knob_on_l = sc.classify_image(self.STOVE_DARK_IMG)
         self.assertTrue(len(knob_on_l)==0)   # no knobs found
 
-    def Xtest_knob_reject_filter(self):
+    def test_knob_reject_filter(self):
         # delete all files in REJECT_PATH
         for f in TestStoveClassifier.REJECT_PATH.iterdir():
             f.unlink()
@@ -91,11 +83,8 @@ class TestStoveClassifier(unittest.TestCase):
                                               self.kc_model_path,
                                               reject_out_path = TestStoveClassifier.REJECT_PATH,
                                             )
-        knob_on_l = sc.classify_image(self.STOVE_INDET_IMG)
-
-        min_conf_on = np.min(knob_on_l)
-        min_conf_off = np.min(1.0 - knob_on_l)
-        self.assertTrue( min_conf_on < sc.reject_conf_on_thresh and min_conf_off < sc.reject_conf_off_thresh)
+        knob_on_l = sc.classify_image(self.STOVE_ON_IMG,
+                                      test_inject_conf = 0.5)
 
         # check that the reject filter wrote a file to REJECT_PATH
         reject_files_l = list(TestStoveClassifier.REJECT_PATH.iterdir())

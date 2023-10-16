@@ -2,6 +2,9 @@
 
 import os
 from pathlib import Path
+import argparse
+import nn_models
+
 
 # add ./src to path
 import sys
@@ -113,23 +116,9 @@ class StoveClassifier:
         print(f"writing knob image to {fname}")
         helplib.write_image(fname, knob_img)
 
-    # def _save_rejects(self, knob_img, knob_on_conf, img_path):
-    #     """
-    #     if the knob image generates low confidence values, then save it to the reject_out_path
-    #     for later training
-    #     """
-    #     if knob_on_conf < self.reject_conf_on_thresh or (1.0-knob_on_conf) < self.reject_conf_off_thresh:
-    #         return
-    #     #
 
-    #     # generate unique filename from the datetime
-    #     # if the original img_path is Path('/a/b/foo.png') then the reject filename will be
-    #     # self.reject_out_path / "foo-knob-conf000.png"
-    #     conf_int = int(knob_on_conf * 100)
-    #     fname = self.reject_out_path / f"{img_path.stem}-knob-conf{conf_int:03d}.png"
-    #     helplib.write_image(fname, knob_img)
 
-    def _eval_knobs(self, adjusted_box_coords_l, img, img_path):
+    def _eval_knobs(self, adjusted_box_coords_l, img, img_path, test_inject_conf = -1.0):
         """
         IN
         bb_l: list of BBox objects
@@ -143,8 +132,12 @@ class StoveClassifier:
         knob_on_conf_l = []  # list of knob==on confidences
         for n, coord in enumerate(adjusted_box_coords_l):
             knob_img= helplib.extract_knob_image(img, *coord)  # *coord is unpacking the tuple
-
             conf_on = self.kc.classify(knob_img)
+
+            if n==0 and test_inject_conf >= 0.0:
+                conf_on = test_inject_conf
+            #
+
             knob_on_conf_l.append(conf_on)
             #
             if self.debug_out_path != None:
@@ -163,7 +156,7 @@ class StoveClassifier:
 
         return np.array(knob_on_conf_l)
 
-    def classify_image(self, img_path):
+    def classify_image(self, img_path, test_inject_conf = -1.0):
         """
         IN
         img: image (numpy array)
@@ -183,7 +176,55 @@ class StoveClassifier:
 
         self.bb_l, img_kl = self.kl.locate_knobs(img_orig)
         self.adjusted_box_coords_l = self._adjust_bbox_coords(self.bb_l, img_orig)
-        knob_on_conf_l = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path)
+        knob_on_conf_l = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path, test_inject_conf)
 
         return knob_on_conf_l
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("image_path", type=Path, help="path to stove image or image dir")
+    parser.add_argument("-o", "--out_path", type=str, required=True, help="output path")
+    parser.add_argument("-x", "--extra_width", type=int, default=26, help="extra width, in pixels, default=26")
+    return parser.parse_args()
+
+"""
+process stove image, wrote marked stove image (with bounding boxes) 
+and knob images 
+"""
+if __name__=="__main__":
+    args  = parse_args()
+    assert args.image_path.exists(), f"{args.image_path} does not exist"
+
+    assert args.out_path != None, f"must specify output path"
+    out_path = Path(args.out_path).resolve()
+
+    # if image_path is a directory, then create a list of all *.png files in that directory
+    # otherwise it's a single file
+    if args.image_path.is_dir():
+        image_ext = ('.png', '.jpg', '.jpeg')
+        image_files_l = [f for f in args.image_path.resolve().iterdir() if f.suffix.lower() in image_ext]
+    else:
+        image_files_l = [args.image_path]
+
+    if len(image_files_l) == 0:
+        print(f"no image files found in {args.image_path}")
+        exit(0)
+
+    # make out_path
+    if not out_path.exists():
+        os.makedirs(out_path, exist_ok=True)
+
+    # load the model
+    sc = StoveClassifier(nn_models.get_model_path(nn_models.KNOB_SEGMENTER),
+                         nn_models.get_model_path(nn_models.KNOB_CLASSIFIER),
+                         out_path)
+    sc.extra_knob_width = args.extra_width
+    sc.extra_knob_height = args.extra_width
+
+    # extract knob images from each stove image
+    for img_path in image_files_l:
+        sc.classify_image(img_path)
+    #
 
