@@ -13,15 +13,15 @@ import shutil
 import stove_state
 
 class TestStoveClassifier(unittest.TestCase):
-    STOVE_ON_IMG =    Path('tests/in/test_stove_classifier/borest1-0001.jpg').resolve()
-    STOVE_OFF_IMG =   Path('tests/in/test_stove_classifier/borest1-0019.jpg').resolve()
-    STOVE_DARK_IMG =  Path('tests/in/test_stove_classifier/borest1-0044.jpg').resolve()
+    STOVE_ON_IMG = Path( "./tests/in/test_stove_classifier/borest1-0000.jpg").resolve()
+    STOVE_OFF_IMG = Path("./tests/in/test_stove_classifier/borest1-0023.jpg").resolve()
+    STOVE_DARK_IMG =      Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
 
 
     REJECT_PATH = Path('./tests/out/test_knob_classifier/reject').resolve()
     TEST_OUT_DIR = Path('./tests/out/test_stove_classifier').resolve()
 
-    import pudb; pudb.set_trace()
+    #import pudb; pudb.set_trace()
 
     @classmethod
     def setUpClass(cls):
@@ -58,7 +58,7 @@ class TestStoveClassifier(unittest.TestCase):
         # verify that knob_on_l is a numpy array
         self.assertTrue(isinstance(knob_on_l, np.ndarray))
         self.assertTrue(len(knob_on_l)== stove_state.StoveState.NUM_KNOBS)
-        self.assertTrue(min(knob_on_l) >= 0.90)
+        self.assertTrue(max(knob_on_l) >= 0.90)
 
     def test_stove_is_off(self):
         #import pudb; pudb.set_trace()

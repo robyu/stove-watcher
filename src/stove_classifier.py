@@ -225,6 +225,9 @@ if __name__=="__main__":
 
     # extract knob images from each stove image
     for img_path in image_files_l:
-        sc.classify_image(img_path)
+        knob_on_conf_l = sc.classify_image(img_path)
+        print(f"Image: {img_path.name}")
+        for n, conf in enumerate(knob_on_conf_l):
+            print(f"knob {n}: {conf:5.3f}")
     #
 

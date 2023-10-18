@@ -12,9 +12,9 @@ class TestStoveWatcher(unittest.TestCase):
 
 STOP - GET STOVE CLASSIFIER WORKING FIRST
     CONFIG_FNAME = Path("./tests/in/config.json").resolve()
-    ON_STOVE_IMG = Path( "./tests/in/test_stove_classifier/on00.jpg").resolve()
-    OFF_STOVE_IMG = Path("./tests/in/test_stove_classifier/boresight-off00.jpg").resolve()
-
+    ON_STOVE_IMG = Path( "./tests/in/test_stove_classifier/borest1-0000.jpg").resolve()
+    OFF_STOVE_IMG = Path("./tests/in/test_stove_classifier/borest1-0019.jpg").resolve()
+    DARK_IMG =      Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
 
     @classmethod
     def setUpClass(cls):
