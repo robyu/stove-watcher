@@ -26,6 +26,8 @@ class StoveState:
         self.off_duration_sec = 0    # duration spent in off state
         self.knob_on_thresh = knob_on_thresh
         self.knob_off_thresh = knob_off_thresh
+        self.latest_knob_on_conf_l = np.array([])
+        self.reject_inputs_flag = False
 
         if now_dt==None:
             self.prev_update_dt = dt.datetime.now()
@@ -34,19 +36,23 @@ class StoveState:
 
     def _eval_inputs(self, knob_on_conf_l):
         # if we haven't located and classified all knobs, then skip this update
-        skip_update = None
+        skip_update = False
         if len(knob_on_conf_l) != StoveState.NUM_KNOBS:
+            print(f"skipping update: wrong number of knobs {len(knob_on_conf_l)}")
             skip_update = True
-        else:
-            skip_update = False
-        assert skip_update != None
+
+        # if any knob confidence falls between .20 and .90, then skip this update
+        if np.any(np.logical_and(knob_on_conf_l > 1.0 - self.knob_off_thresh, knob_on_conf_l < self.knob_on_thresh)):
+            print(f"skipping update: poor knob confidence {knob_on_conf_l}")
+            skip_update = True
+
         return skip_update
 
 
     def update(self, knob_on_conf_l, now_dt=None):
         if now_dt==None:
             now_dt = dt.datetime.now()
-        
+   
 
         #
         # state actions
@@ -60,15 +66,15 @@ class StoveState:
         #
         self.prev_update_dt = now_dt
 
-        bad_inputs = self._eval_inputs(knob_on_conf_l)
-        if bad_inputs:
+        self.reject_inputs_flag = self._eval_inputs(knob_on_conf_l)
+        if self.reject_inputs_flag:
             #
             # not a valid update, so don't bother evaluating transitions
             return
         
         # use the min confidence value 
         # reasoning: if a single knob is on with conf = 1, then the stove is on
-        max_on_conf = np.min(knob_on_conf_l)
+        max_on_conf = np.max(knob_on_conf_l)
         assert max_on_conf >= 0.0 and max_on_conf <= 1.0
 
         # transitions
@@ -104,6 +110,7 @@ class StoveState:
              'prev_state': self.prev_state,
             'on_duration_sec': self.on_duration_sec,
             'off_duration_sec': self.off_duration_sec,
+            'reject_inputs_flag': self.reject_inputs_flag,
             }
         return d
     

@@ -7,14 +7,18 @@ from unittest.mock import MagicMock
 from src.config_store import ConfigStore
 from pathlib import Path
 import stove_state
+import datetime as dt
+from mqtt_topics import MqttTopics
 
 class TestStoveWatcher(unittest.TestCase):
 
-STOP - GET STOVE CLASSIFIER WORKING FIRST
+
     CONFIG_FNAME = Path("./tests/in/config.json").resolve()
-    ON_STOVE_IMG = Path( "./tests/in/test_stove_classifier/borest1-0000.jpg").resolve()
-    OFF_STOVE_IMG = Path("./tests/in/test_stove_classifier/borest1-0019.jpg").resolve()
-    DARK_IMG =      Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
+    STOVE_ON_IMG = Path( "./tests/in/test_stove_classifier/borest1-0000.jpg").resolve()
+    STOVE_OFF_IMG = Path("./tests/in/test_stove_classifier/borest1-0023.jpg").resolve()
+    STOVE_DARK_IMG = Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
+
+    import pudb; pudb.set_trace()
 
     @classmethod
     def setUpClass(cls):
@@ -22,39 +26,19 @@ STOP - GET STOVE CLASSIFIER WORKING FIRST
         # execute function before test suite runs
 
         # read CONFIG_FNAME into a ConfigStore
-        # and create REJECT and DEBUG directories in ./tests/out 
         config = ConfigStore(cls.CONFIG_FNAME)
 
         reject_path = Path(config.reject_path).resolve()
-        if not reject_path.exists():
-            reject_path.mkdir(parents=True, exist_ok=True)
-        else:
-            # remove all files in reject_path
-            for f in reject_path.glob('*'):
-                f.unlink()
+        StoveWatcher._init_dir(reject_path)
 
         debug_out_path = Path(config.debug_out_path).resolve()
-        if not debug_out_path.exists():
-            debug_out_path.mkdir(parents=True, exist_ok=True)
-        else:
-            # remove all files in debug_out_path
-            for f in debug_out_path.glob('*'):
-                f.unlink()
+        StoveWatcher._init_dir(debug_out_path)
 
         ftp_path = Path(config.ftp_dir).resolve()
-        if not ftp_path.exists():
-            ftp_path.mkdir(parents=True, exist_ok=True)
-        else:
-            # remove all files in ftp_path
-            for f in ftp_path.glob('*'):
-                f.unlink()
-
+        StoveWatcher._init_dir(ftp_path)
 
         holding_path = Path(config.holding_dir).resolve()
-        if not holding_path.exists():
-            holding_path.mkdir(parents=True, exist_ok=True)
-
-
+        StoveWatcher._init_dir(holding_path)
 
     def setUp(self):
         self.config = ConfigStore(TestStoveWatcher.CONFIG_FNAME)
@@ -69,14 +53,13 @@ STOP - GET STOVE CLASSIFIER WORKING FIRST
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME)
         self.assertTrue(True)
 
-    def test_classify_stove_as_on(self):
-        import pudb;pudb.set_trace()
+    def test_stove_is_on(self):
         mock_client = MagicMock()
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
                                mqtt_test_client=mock_client)
 
         # copy ON_STOVE_IMG to the ftp directory
-        shutil.copy(TestStoveWatcher.ON_STOVE_IMG, watcher.config.ftp_dir)
+        shutil.copy(TestStoveWatcher.STOVE_ON_IMG, watcher.config.ftp_dir)
 
         watcher.run(max_iter=1, write_img_flag=True)
         ret_d = watcher.get_state()
@@ -87,16 +70,17 @@ STOP - GET STOVE CLASSIFIER WORKING FIRST
         #     'on_duration_sec': self.on_duration_sec,
         #     'off_duration_sec': self.off_duration_sec,
         #     }
+        self.assertTrue(ret_d['reject_inputs_flag'] == False)
+        self.assertTrue(ret_d['prev_state'] == stove_state.StoveStates.OFF)
         self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.ON)
 
-    def Xtest_classify_stove_as_off(self):
-        import pudb;pudb.set_trace()
+    def test_stove_is_off(self):
         mock_client = MagicMock()
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
                                mqtt_test_client=mock_client)
 
         # copy ON_STOVE_IMG to the ftp directory
-        shutil.copy(TestStoveWatcher.OFF_STOVE_IMG, watcher.config.ftp_dir)
+        shutil.copy(TestStoveWatcher.STOVE_OFF_IMG, watcher.config.ftp_dir)
 
         watcher.run(max_iter=1, write_img_flag=True)
         ret_d = watcher.get_state()
@@ -107,6 +91,68 @@ STOP - GET STOVE CLASSIFIER WORKING FIRST
         #     'on_duration_sec': self.on_duration_sec,
         #     'off_duration_sec': self.off_duration_sec,
         #     }
-        self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.ON)
+        self.assertTrue(ret_d['reject_inputs_flag'] == False)
+        self.assertTrue(ret_d['prev_state'] == stove_state.StoveStates.OFF)
+        self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.OFF)
 
     
+    def test_stove_is_dark(self):
+        mock_client = MagicMock()
+        watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
+                               mqtt_test_client=mock_client)
+
+        # copy ON_STOVE_IMG to the ftp directory
+        shutil.copy(TestStoveWatcher.STOVE_DARK_IMG, watcher.config.ftp_dir)
+
+        watcher.run(max_iter=1, write_img_flag=True)
+        ret_d = watcher.get_state()
+
+        # return dictionary has keys:
+        #  {'curr_state': self.curr_state,
+        #      'prev_state': self.prev_state,
+        #     'on_duration_sec': self.on_duration_sec,
+        #     'off_duration_sec': self.off_duration_sec,
+        #     }
+        self.assertTrue(ret_d['reject_inputs_flag'] == True)
+        self.assertTrue(ret_d['prev_state'] == stove_state.StoveStates.OFF)
+        self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.OFF)
+
+    def test_publish_transition_on(self):
+        mock_client = MagicMock()
+        watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
+                               mqtt_test_client=mock_client)    
+
+        # stove goes on
+        now_dt = dt.datetime.now()
+        shutil.copy(TestStoveWatcher.STOVE_ON_IMG, watcher.config.ftp_dir)
+        watcher.run(max_iter=1, 
+                    now_dt=now_dt)
+        ret_d = watcher.get_state()
+
+        # it's on
+        self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.ON)       
+        # "capture image" request got published
+        # 1 item got published?
+        self.assertTrue(mock_client.publish.call_count == 1)
+        pub_l = mock_client.publish.call_args
+        topic, arg = pub_l[0]
+        self.assertTrue(topic == MqttTopics.IC_CAPTURE_NOW)
+        mock_client.reset_mock()
+
+        # 10 minutes later, it's still on
+        now_dt = now_dt + dt.timedelta(minutes=10)
+        shutil.copy(TestStoveWatcher.STOVE_ON_IMG, watcher.config.ftp_dir)
+        watcher.run(max_iter=1, 
+                    now_dt=now_dt)
+        ret_d = watcher.get_state()
+        self.assertTrue(ret_d['curr_state'] == stove_state.StoveStates.ON)       
+        # 2 items got published:
+        # 1. "get image now"
+        # 2. "stove is on"
+        self.assertTrue(mock_client.publish.call_count == 2)
+        # examine what got published
+        published = mock_client.publish.call_args_list
+        self.assertTrue(published[0][0][0] == MqttTopics.IC_CAPTURE_NOW)
+        self.assertTrue(published[1][0][0] == MqttTopics.STOVE_STATUS_ON_DURATION_MIN)
+        self.assertTrue(published[1][0][1] == 10)
+

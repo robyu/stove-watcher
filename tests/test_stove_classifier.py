@@ -15,7 +15,7 @@ import stove_state
 class TestStoveClassifier(unittest.TestCase):
     STOVE_ON_IMG = Path( "./tests/in/test_stove_classifier/borest1-0000.jpg").resolve()
     STOVE_OFF_IMG = Path("./tests/in/test_stove_classifier/borest1-0023.jpg").resolve()
-    STOVE_DARK_IMG =      Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
+    STOVE_DARK_IMG = Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
 
 
     REJECT_PATH = Path('./tests/out/test_knob_classifier/reject').resolve()

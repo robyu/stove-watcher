@@ -20,9 +20,7 @@ class StoveClassifier:
     """
     read an image, segment out knobs, classify each knob
     """
-    # MAX_NUM_KNOBS = 7
-    KNOB_ON_THRESH = 0.90
-    KNOB_OFF_THRESH = 0.90
+    MAX_NUM_KNOBS = 7
     
     def __init__(self, 
                  locater_model_path, 
@@ -145,12 +143,20 @@ class StoveClassifier:
             # 
 
             if self.reject_out_path != None and conf_on < self.reject_conf_on_thresh and (1.0-conf_on) < self.reject_conf_off_thresh:
+                print(f"rejecting knob {n} with conf {conf_on}")
                 self._debug_write_knob_image(self.reject_out_path, knob_img, n, img_path, conf_on)
             #
         #
         # write the stove image w/ bboxes
         if self.debug_out_path != None:
             fname = self.debug_out_path / f"{img_path.stem}-knob-locator-out.png"
+            print(f"writing image with knobs to {fname}")
+            self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
+
+        # if nn has segmented out too many knobs, we want to know about it
+        if self.reject_out_path != None and len(knob_on_conf_l) > StoveClassifier.MAX_NUM_KNOBS:
+            print("WARNING: too many knobs found")
+            fname = self.reject_out_path / f"{img_path.stem}-knob-locator-out.png"
             print(f"writing image with knobs to {fname}")
             self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
 
