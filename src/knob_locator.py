@@ -11,7 +11,7 @@ class KnobLocator:
     MAX_ROWS_COLS = 640  # max rows and cols of input image
     def __init__(self, eim_fname):
         self.eim_path = Path(eim_fname)
-        assert self.eim_path.exists()
+        assert self.eim_path.exists(), f"file {eim_fname} does not exist"
         self.runner = ImageImpulseRunner(str(self.eim_path.resolve()))
         self.model_info = self.runner.init()
 
@@ -42,6 +42,11 @@ class KnobLocator:
                                      label=d['label']) for d in res['result']['bounding_boxes']]
 
         assert len(bb_l)==len(res['result']['bounding_boxes'])
+
+        #
+        # if img_out is grayscale, convert to RGB
+        if len(img_out.shape) == 2:
+            img_out = cv2.cvtColor(img_out, cv2.COLOR_GRAY2RGB)
         return bb_l, img_out
 
     def _reshape_to_square(self, img):

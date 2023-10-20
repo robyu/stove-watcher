@@ -4,119 +4,113 @@ import datetime as dt
 import enum
 from mqtt_topics import MqttTopics  
 import mqtt_publisher
+import numpy as np
 
 class StoveStates(enum.Enum):
-    OFF = enum.auto()
-    ON = enum.auto()
-    TURNING_OFF = enum.auto()
+     INIT = enum.auto()
+     OFF = enum.auto()
+     ON = enum.auto()
 
 
 class StoveState:
-    DEFAULT_PUBLISH_INTERVAL_SEC = 300
+    NUM_KNOBS = 7
+
     def __init__(self, 
-                 mqtt_pub,
-                 publish_interval_sec=DEFAULT_PUBLISH_INTERVAL_SEC  # set default value here
+                 knob_on_thresh = 0.90,
+                 knob_off_thresh = 0.90,
+                 now_dt = None
                   ):
-        # keep track of whether stove is on or off
-        # if on, track for how long
-        self.state = StoveStates.OFF
-        self.countdown_sec = 0
-        self.publish_interval_sec = publish_interval_sec
-        self.next_state = None
-        self.last_update_dt = None
+        self.curr_state = StoveStates.OFF   # state AFTER the update()
+        self.prev_state = StoveStates.INIT # state BEFORE the update()
+        self.on_duration_sec = 0    # duration spent in on state
+        self.off_duration_sec = 0    # duration spent in off state
+        self.knob_on_thresh = knob_on_thresh
+        self.knob_off_thresh = knob_off_thresh
+        self.latest_knob_on_conf_l = np.array([])
+        self.reject_inputs_flag = False
 
-        assert type(mqtt_pub) == mqtt_publisher.MqttPublisher
-        self.mqtt_pub = mqtt_pub
+        if now_dt==None:
+            self.prev_update_dt = dt.datetime.now()
+        else:
+            self.prev_update_dt = now_dt
 
-    def set_state(self, stove_is_on):
-        self.next_state = self.state
-        if self.state == StoveStates.ON:
-            if stove_is_on==False:
-                self.next_state = StoveStates.OFF
-            else:
-                assert stove_is_on==True
-                pass
-            #
-        elif self.state == StoveStates.OFF:
-            if stove_is_on == True:
-                self.next_state = StoveStates.ON
-            else:
-                assert stove_is_on==False
-                pass
-            #
-        #       
+    def _eval_inputs(self, knob_on_conf_l):
+        # if we haven't located and classified all knobs, then skip this update
+        skip_update = False
+        if len(knob_on_conf_l) != StoveState.NUM_KNOBS:
+            print(f"skipping update: wrong number of knobs {len(knob_on_conf_l)}")
+            skip_update = True
 
-    def update(self, now_dt=None):
+        # if any knob confidence falls between .20 and .90, then skip this update
+        if np.any(np.logical_and(knob_on_conf_l > 1.0 - self.knob_off_thresh, knob_on_conf_l < self.knob_on_thresh)):
+            print(f"skipping update: poor knob confidence {knob_on_conf_l}")
+            skip_update = True
+
+        return skip_update
+
+
+    def update(self, knob_on_conf_l, now_dt=None):
         if now_dt==None:
             now_dt = dt.datetime.now()
+   
+
+        #
+        # state actions
+        self.prev_state = self.curr_state 
+        delta_sec = (now_dt - self.prev_update_dt).seconds
+        if self.curr_state == StoveStates.OFF:
+            self.off_duration_sec += delta_sec
+        else:
+            assert self.curr_state == StoveStates.ON
+            self.on_duration_sec += delta_sec
+        #
+        self.prev_update_dt = now_dt
+
+        self.reject_inputs_flag = self._eval_inputs(knob_on_conf_l)
+        if self.reject_inputs_flag:
+            #
+            # not a valid update, so don't bother evaluating transitions
+            return
+        
+        # use the min confidence value 
+        # reasoning: if a single knob is on with conf = 1, then the stove is on
+        max_on_conf = np.max(knob_on_conf_l)
+        assert max_on_conf >= 0.0 and max_on_conf <= 1.0
+
+        # transitions
+        next_state = self.curr_state
+
+        #
+        if self.curr_state == StoveStates.OFF:
+            if max_on_conf >= self.knob_on_thresh:
+                self.on_duration_sec = 0
+                next_state = StoveStates.ON
+            else:
+                pass
+            #
+        else:
+            assert self.curr_state == StoveStates.ON
+            if (1.0 - max_on_conf) >= self.knob_off_thresh:
+                self.off_duration_sec = 0
+                next_state = StoveStates.OFF
+            else:
+                pass
+            #
         #
 
-        if self.next_state != self.state:
-            if self.state == StoveStates.OFF:
-                if self.next_state == StoveStates.OFF:
-                    # it's already off
-                    pass
-                else:
-                    # off -> on
-                    assert self.next_state == StoveStates.ON
-                    self.countdown_sec = self.publish_interval_sec
-                #
-            else:
-                assert self.state == StoveStates.ON
-                if self.next_state == StoveStates.OFF:
-                    self.mqtt_pub.publish(MqttTopics.STOVE_STATUS_OFF, None)
-                else:
-                    assert self.next_state == StoveStates.ON
-                    delta_sec = (now_dt - self.last_update_dt).total_seconds()
-                    self.countdown_sec -= delta_sec
-                    if self.countdown_sec <= 0:
-                        #
-                        # send notification and reset countdown
-                        self.mqtt_pub.publish(MqttTopics.STOVE_STATUS_ON_DURATION_MIN, 
-                                             int(self.publish_interval_sec/60.0))
-                        self.countdown_sec = StoveState.publish_interval_sec
-                    #
-                #
-            #
-            self.state = self.next_state
-        else: # next_state == state
-            if self.state == StoveStates.OFF:
-                pass
-            else:
-                assert self.state == StoveStates.ON
-                delta_sec = (now_dt - self.last_update_dt).total_seconds()
-                self.countdown_sec -= delta_sec
-                if self.countdown_sec <= 0:
-                    #
-                    # send notification and reset countdown
-                    self.mqtt_pub.publish(MqttTopics.STOVE_STATUS_ON_DURATION_MIN, 
-                                            int(self.publish_interval_sec/60.0))
-                    self.countdown_sec = self.publish_interval_sec
-                #
-            #
-        #
-                
-        #
-        self.last_update_dt = now_dt
+
+        self.curr_state = next_state
 
 
     def get_state(self, now_dt=None):
-        if now_dt==None:
-            now_dt = dt.datetime.now()
-        #
-        d = {}
-        d['is_on'] = self.state==StoveStates.ON
-        if self.state==StoveStates.ON:
-            d['on_countdown_sec'] = self.countdown_sec
-        else:
-            d['on_countdown_sec'] = 0
-
+        """
+        return any state information we need for alerts
+        """
+        d = {'curr_state': self.curr_state,
+             'prev_state': self.prev_state,
+            'on_duration_sec': self.on_duration_sec,
+            'off_duration_sec': self.off_duration_sec,
+            'reject_inputs_flag': self.reject_inputs_flag,
+            }
         return d
-    
-    
-
-
-
-
-
     

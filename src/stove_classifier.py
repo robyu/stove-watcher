@@ -2,6 +2,9 @@
 
 import os
 from pathlib import Path
+import argparse
+import nn_models
+
 
 # add ./src to path
 import sys
@@ -9,74 +12,71 @@ sys.path.append('./src')
 import knob_classifier
 import knob_locator
 import helplib
+import enum
+import datetime
+import numpy as np
 
 class StoveClassifier:
     """
     read an image, segment out knobs, classify each knob
     """
     MAX_NUM_KNOBS = 7
-    KNOB_CLASSIFIER_THRESHOLD = 0.90
     
-    def __init__(self, locater_model_path, 
+    def __init__(self, 
+                 locater_model_path, 
                  classifier_model_path,
-                   reject_path = Path('./rejects'),
-                   debug_out_path = None):
+                 debug_out_path = None,  # functions as both an output path and enable flag,
+                 reject_out_path = None, # functions as both an output path and enable flag
+                 reject_conf_on_thresh = 0.9,
+                 reject_conf_off_thresh = 0.9,
+                 ):
         self.kl = knob_locator.KnobLocator(locater_model_path)
-        self.kc = knob_classifier.KnobClassifier(classifier_model_path, thresh = StoveClassifier.KNOB_CLASSIFIER_THRESHOLD)
-        self.reject_path = Path(reject_path)
-        if reject_path.exists():
-            assert reject_path.is_dir(), f"{reject_path} is not a directory"
-        else:
-            reject_path.mkdir(parents=True, exist_ok=True)
-        #
-        self.debug_out_path = debug_out_path
-        if self.debug_out_path:
+        self.kc = knob_classifier.KnobClassifier(classifier_model_path)
+
+        self.debug_out_path = None
+        if debug_out_path != None:
+            self.debug_out_path = Path(debug_out_path).resolve()
             assert self.debug_out_path.exists()
             assert self.debug_out_path.is_dir()
         #            
+
         self.extra_knob_width = 26
         self.extra_knob_height = 26
         self.bb_l = []  
         self.adjusted_box_coords_l = []
 
-    def _write_knob_locator_out(self, img, bb_l, fname):
+        self.reject_out_path = None
+        if reject_out_path != None:
+            self.reject_out_path = Path(reject_out_path).resolve()
+            assert self.reject_out_path.exists()
+            assert self.reject_out_path.is_dir()
+        #
+        self.reject_conf_on_thresh = reject_conf_on_thresh
+        self.reject_conf_off_thresh = reject_conf_off_thresh
+
+    def _write_img_with_bboxes(self, img, bb_l, fname):
+        """
+        for debug: mark a copy of img with all bounding boxes, then
+        write to the debug_out_path
+        """
         img_copy = img.copy()
         for bb in bb_l:
             img_copy = helplib.draw_box(img_copy, bb.x0, bb.y0, bb.x1, bb.y1)
         #
-        helplib.write_image(self.debug_out_path / fname, img_copy)
+        helplib.write_image(fname, img_copy)
+        print(f"wrote image with knobs to {fname}")
 
-    def _write_orig_img_with_bboxes(self, img, box_coords_l, fname):
+    def _write_img_with_bbox_coords(self, img, box_coords_l, fname):
+        """
+        like _write_img_with_bboxes, except bbox_coords are adjusted coordinates
+        """
         img_copy = img.copy()
         for box_coords in box_coords_l:
             img_copy = helplib.draw_box(img_copy, box_coords[0], box_coords[1], box_coords[2], box_coords[3])
         #
-        helplib.write_image(self.debug_out_path / fname, img_copy)
+        helplib.write_image(fname, img_copy)
 
-    def stove_is_on(self, img_path, write_img_flag=False):
-        assert img_path.exists()
-        img_orig = helplib.read_image_rgb(img_path)
 
-        self.bb_l, img_kl = self.kl.locate_knobs(img_orig)
-        kl_reject_flag = self._reject_stove_image(self.bb_l, img_orig, img_path)
-
-        if write_img_flag:
-            self._write_knob_locator_out(img_kl, self.bb_l, "knob-locator-out.png")
-
-        if kl_reject_flag==False:
-            # create list of bbox coords adjusted for the original image
-            self.adjusted_box_coords_l = self._adjust_bbox_coords(self.bb_l, img_orig)
-            if write_img_flag:
-                self._write_orig_img_with_bboxes(img_orig, self.adjusted_box_coords_l, "orig-img-with-bboxes.png")               
-            #
-            stove_is_on = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path, write_img_flag)
-        else:
-            stove_is_on = False
-            self.adjusted_box_coords_l = []
-        #
-        print(f"stove {img_path}: stove_is_on = {stove_is_on}")
-        return stove_is_on
-    
     def _adjust_bbox_coords(self, bb_l, img):
         """
         IN
@@ -103,19 +103,20 @@ class StoveClassifier:
         #
         return adjusted_box_coords_l
 
-    def _reject_stove_image(self, bb_l, img, img_path):
-        reject_flag = False
-        if len(bb_l) > StoveClassifier.MAX_NUM_KNOBS:
-            # filename is reject_path + img_path stem + "too-many-knobs" + png
-            reject_fname = self.reject_path / f"{img_path.stem}-too-many-knobs.png"
-            helplib.write_image(reject_fname, img)
-            print(f"rejecting {img_path} because it has {len(bb_l)} knobs")
-            print(f"wrote to {reject_fname}")
-            reject_flag = True
-        #
-        return reject_flag
+    def _debug_write_knob_image(self, out_path, knob_img, knob_index, img_path, knob_on_conf):
+        """
+        write individual knob image with a nice filename
+        """
+        assert out_path.exists(), f"output path {out_path} does not exist"
 
-    def _eval_knobs(self, adjusted_box_coords_l, img, img_path, write_img_flag=False):
+        conf_int = int(knob_on_conf * 100)
+        fname = out_path / f"{img_path.stem}-knob-{knob_index:02d}-onconf-{conf_int:03d}.png"
+        print(f"writing knob image to {fname}")
+        helplib.write_image(fname, knob_img)
+
+
+
+    def _eval_knobs(self, adjusted_box_coords_l, img, img_path, test_inject_conf = -1.0):
         """
         IN
         bb_l: list of BBox objects
@@ -124,38 +125,115 @@ class StoveClassifier:
         write_img_flag:  if True, write image to debug_out_path
         
         OUT
-        stove_is_on: boolean
+        stove_class
         """
-        stove_is_on = False
+        knob_on_conf_l = []  # list of knob==on confidences
         for n, coord in enumerate(adjusted_box_coords_l):
             knob_img= helplib.extract_knob_image(img, *coord)  # *coord is unpacking the tuple
-            knob_result = self.kc.classify(knob_img)
-            print(f"knob {n} coords: {coord}")
-            if knob_result.knobclass == knob_classifier.KnobClass.ON:
-                print(f"knob {n} is ON (value = {knob_result.on_score}")
-                stove_is_on = stove_is_on or True
-            elif knob_result.knobclass == knob_classifier.KnobClass.OFF:
-                print(f"knob {n} is OFF (value = {knob_result.off_score}")
-            else:
-                print(f"knob {n} is INDETERMINATE (on_score = {knob_result.on_score}, off_score = {knob_result.off_score})")
+            conf_on = self.kc.classify(knob_img)
 
-                # if indeterminate, then write the WHOLE STOVE'S image to rejects
-                reject_fname = self.reject_path / f"{img_path.stem}-indeterminate.png"
-                helplib.write_image(reject_fname, img)
-
-                # also write the knob image to rejects
-                reject_fname = self.reject_path / f"{img_path.stem}-knob-{n:02d}-indeterminate-knob.png"
-                helplib.write_image(reject_fname, knob_img)
-            #
-                
-            if write_img_flag:
-                fname = self.debug_out_path / f"{img_path.stem}-knob-{n:02d}.png"
-                helplib.write_image(fname, knob_img)
-                print(f"wrote {fname}")
+            if n==0 and test_inject_conf >= 0.0:
+                conf_on = test_inject_conf
             #
 
-        return stove_is_on
+            knob_on_conf_l.append(conf_on)
+            #
+            if self.debug_out_path != None:
+                self._debug_write_knob_image(self.debug_out_path, knob_img, n, img_path, conf_on)
+            # 
+
+            if self.reject_out_path != None and conf_on < self.reject_conf_on_thresh and (1.0-conf_on) < self.reject_conf_off_thresh:
+                print(f"rejecting knob {n} with conf {conf_on}")
+                self._debug_write_knob_image(self.reject_out_path, knob_img, n, img_path, conf_on)
+            #
+        #
+        # write the stove image w/ bboxes
+        if self.debug_out_path != None:
+            fname = self.debug_out_path / f"{img_path.stem}-knob-locator-out.png"
+            print(f"writing image with knobs to {fname}")
+            self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
+
+        # if nn has segmented out too many knobs, we want to know about it
+        if self.reject_out_path != None and len(knob_on_conf_l) > StoveClassifier.MAX_NUM_KNOBS:
+            print("WARNING: too many knobs found")
+            fname = self.reject_out_path / f"{img_path.stem}-knob-locator-out.png"
+            print(f"writing image with knobs to {fname}")
+            self._write_img_with_bbox_coords(img, adjusted_box_coords_l, fname)
+
+        return np.array(knob_on_conf_l)
+
+    def classify_image(self, img_path, test_inject_conf = -1.0):
+        """
+        IN
+        img: image (numpy array)
+        write_img_flag:  if True, write image to debug_out_path
+
+        OUT
+        knob_on_conf_l: list of P(knob=on) for each knob
+        """
+        assert img_path.exists(), f"image path {img_path} does not exist"
+        print(f"classifying image {img_path}")
+        
+        img_orig = helplib.read_image_rgb(img_path)
+
+        self.bb_l = []
+        self.adjusted_box_coords_l = []
 
 
+        self.bb_l, img_kl = self.kl.locate_knobs(img_orig)
+        self.adjusted_box_coords_l = self._adjust_bbox_coords(self.bb_l, img_orig)
+        knob_on_conf_l = self._eval_knobs(self.adjusted_box_coords_l, img_orig, img_path, test_inject_conf)
 
-    
+        return knob_on_conf_l
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("image_path", type=Path, help="path to stove image or image dir")
+    parser.add_argument("-o", "--out_path", type=str, required=True, help="output path")
+    parser.add_argument("-x", "--extra_width", type=int, default=26, help="extra width, in pixels, default=26")
+    return parser.parse_args()
+
+"""
+process stove image, wrote marked stove image (with bounding boxes) 
+and knob images 
+"""
+if __name__=="__main__":
+    args  = parse_args()
+    assert args.image_path.exists(), f"{args.image_path} does not exist"
+
+    assert args.out_path != None, f"must specify output path"
+    out_path = Path(args.out_path).resolve()
+
+    # if image_path is a directory, then create a list of all *.png files in that directory
+    # otherwise it's a single file
+    if args.image_path.is_dir():
+        image_ext = ('.png', '.jpg', '.jpeg')
+        image_files_l = [f for f in args.image_path.resolve().iterdir() if f.suffix.lower() in image_ext]
+    else:
+        image_files_l = [args.image_path]
+
+    if len(image_files_l) == 0:
+        print(f"no image files found in {args.image_path}")
+        exit(0)
+
+    # make out_path
+    if not out_path.exists():
+        os.makedirs(out_path, exist_ok=True)
+
+    # load the model
+    sc = StoveClassifier(nn_models.get_model_path(nn_models.KNOB_SEGMENTER),
+                         nn_models.get_model_path(nn_models.KNOB_CLASSIFIER),
+                         out_path)
+    sc.extra_knob_width = args.extra_width
+    sc.extra_knob_height = args.extra_width
+
+    # extract knob images from each stove image
+    for img_path in image_files_l:
+        knob_on_conf_l = sc.classify_image(img_path)
+        print(f"Image: {img_path.name}")
+        for n, conf in enumerate(knob_on_conf_l):
+            print(f"knob {n}: {conf:5.3f}")
+    #
+
