@@ -10,6 +10,8 @@ import stove_state
 import datetime as dt
 from mqtt_topics import MqttTopics
 
+#import pudb; pudb.set_trace()
+
 class TestStoveWatcher(unittest.TestCase):
 
 
@@ -18,7 +20,6 @@ class TestStoveWatcher(unittest.TestCase):
     STOVE_OFF_IMG = Path("./tests/in/test_stove_classifier/borest1-0023.jpg").resolve()
     STOVE_DARK_IMG = Path("./tests/in/test_stove_classifier/borest1-0044.jpg").resolve()
 
-    import pudb; pudb.set_trace()
 
     @classmethod
     def setUpClass(cls):
@@ -97,6 +98,7 @@ class TestStoveWatcher(unittest.TestCase):
 
     
     def test_stove_is_dark(self):
+
         mock_client = MagicMock()
         watcher = StoveWatcher(TestStoveWatcher.CONFIG_FNAME,
                                mqtt_test_client=mock_client)
@@ -140,7 +142,9 @@ class TestStoveWatcher(unittest.TestCase):
         mock_client.reset_mock()
 
         # 10 minutes later, it's still on
-        now_dt = now_dt + dt.timedelta(minutes=10)
+        delta_sec = (2 * watcher.warn_interval_sec) + 1
+        self.assertTrue(delta_sec % watcher.warn_interval_sec < watcher.loop_interval_sec)
+        now_dt = now_dt + dt.timedelta(seconds=delta_sec)
         shutil.copy(TestStoveWatcher.STOVE_ON_IMG, watcher.config.ftp_dir)
         watcher.run(max_iter=1, 
                     now_dt=now_dt)
@@ -154,5 +158,5 @@ class TestStoveWatcher(unittest.TestCase):
         published = mock_client.publish.call_args_list
         self.assertTrue(published[0][0][0] == MqttTopics.IC_CAPTURE_NOW)
         self.assertTrue(published[1][0][0] == MqttTopics.STOVE_STATUS_ON_DURATION_MIN)
-        self.assertTrue(published[1][0][1] == 10)
+        self.assertTrue(published[1][0][1] == 2 * watcher.warn_interval_sec/60)
 
